@@ -182,6 +182,7 @@ jobs:
       - name: Package (bundle Qt)
         run: |
           macdeployqt build/Orbital.app -qmldir=resources/qml
+          rm -rf build/Orbital.app/Contents/PlugIns/sqldrivers
           codesign --force --deep --sign - build/Orbital.app
           hdiutil create -volname Orbital -srcfolder build/Orbital.app -ov -format UDZO Orbital-macos-arm64.dmg
 

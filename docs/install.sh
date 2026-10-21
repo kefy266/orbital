@@ -35,6 +35,17 @@ if [ "$OS" = "Darwin" ]; then
     printf "${YELLOW}→ Homebrew kurulumu atlandı, doğrudan disk imajı ile devam ediliyor...${NC}\n"
   fi
 
+  if [ "$ARCH" = "x86_64" ]; then
+    printf "${YELLOW}→ Intel tabanlı Mac tespit edildi.${NC}\n"
+    if command -v brew >/dev/null 2>&1; then
+      printf "${CYAN}→ Homebrew ile Intel mimarisine uygun olarak kuruluyor...${NC}\n"
+      brew install kefy266/orbital/orbital
+      printf "${GREEN}✓ Orbital başarıyla kuruldu!${NC}\n"
+      open /Applications/Orbital.app 2>/dev/null || orbital || true
+      exit 0
+    fi
+  fi
+
   DMG_URL="${RELEASE_URL}/Orbital-macos-arm64.dmg"
   TEMP_DIR="$(mktemp -d)"
   TEMP_DMG="${TEMP_DIR}/Orbital.dmg"
@@ -55,17 +66,23 @@ if [ "$OS" = "Darwin" ]; then
   mkdir -p "$MOUNT_DIR"
   hdiutil attach "$TEMP_DMG" -mountpoint "$MOUNT_DIR" -nobrowse -quiet
 
-  printf "${CYAN}→ /Applications klasörüne yükleniyor...${NC}\n"
+  TARGET_DIR="/Applications"
+  if [ ! -w "$TARGET_DIR" ]; then
+    TARGET_DIR="${HOME}/Applications"
+    mkdir -p "$TARGET_DIR"
+  fi
+
+  printf "${CYAN}→ %s klasörüne yükleniyor...${NC}\n" "$TARGET_DIR"
   pkill -x Orbital 2>/dev/null || true
-  rm -rf /Applications/Orbital.app
-  cp -R "$MOUNT_DIR/Orbital.app" /Applications/
+  rm -rf "${TARGET_DIR}/Orbital.app"
+  cp -R "$MOUNT_DIR/Orbital.app" "$TARGET_DIR/"
 
   printf "${CYAN}→ Gatekeeper karantina bayrağı temizleniyor (xattr -cr)...${NC}\n"
-  xattr -cr /Applications/Orbital.app 2>/dev/null || true
+  xattr -cr "${TARGET_DIR}/Orbital.app" 2>/dev/null || true
 
-  printf "${GREEN}✓ Orbital başarıyla kuruldu: /Applications/Orbital.app${NC}\n"
+  printf "${GREEN}✓ Orbital başarıyla kuruldu: %s/Orbital.app${NC}\n" "$TARGET_DIR"
   printf "${BOLD}${CYAN}→ Orbital doğrudan açılıyor...${NC}\n"
-  open /Applications/Orbital.app
+  open "${TARGET_DIR}/Orbital.app"
 
 elif [ "$OS" = "Linux" ]; then
   printf "${CYAN}→ İşletim Sistemi:${NC} Linux (%s)\n" "$ARCH"

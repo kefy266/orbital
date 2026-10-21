@@ -1403,19 +1403,38 @@ void AppController::applyUpdate()
             Q_EMIT toast(m_updateStatus);
         }
 #elif defined(Q_OS_MACOS)
-        const QString script = QStringLiteral(
-            "MOUNT_DIR=$(mktemp -d); "
-            "hdiutil attach \"%1\" -mountpoint \"$MOUNT_DIR\" -nobrowse -quiet; "
-            "sleep 2; "
-            "rm -rf /Applications/Orbital.app; "
-            "cp -R \"$MOUNT_DIR/Orbital.app\" /Applications/; "
-            "hdiutil detach \"$MOUNT_DIR\" -quiet; "
-            "xattr -cr /Applications/Orbital.app; "
-            "rm -f \"%1\"; "
-            "open /Applications/Orbital.app"
-        ).arg(destFile);
-        QProcess::startDetached(QStringLiteral("bash"), QStringList() << QStringLiteral("-c") << script);
-        QCoreApplication::quit();
+        const QString shPath = QDir::tempPath() + QDir::separator() + QStringLiteral("orbital_update.sh");
+        QFile sh(shPath);
+        if (sh.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            QTextStream out(&sh);
+            out << "#!/usr/bin/env bash\n";
+            out << "sleep 2\n";
+            out << "MOUNT_DIR=$(mktemp -d)\n";
+            out << "hdiutil attach \"" << destFile << "\" -mountpoint \"$MOUNT_DIR\" -nobrowse -quiet\n";
+            out << "TARGET_DIR=\"/Applications\"\n";
+            out << "if [ ! -w \"$TARGET_DIR\" ]; then TARGET_DIR=\"$HOME/Applications\"; mkdir -p \"$TARGET_DIR\"; fi\n";
+            out << "rm -rf \"$TARGET_DIR/Orbital.app\"\n";
+            out << "cp -R \"$MOUNT_DIR/Orbital.app\" \"$TARGET_DIR/\"\n";
+            out << "hdiutil detach \"$MOUNT_DIR\" -quiet 2>/dev/null || true\n";
+            out << "xattr -cr \"$TARGET_DIR/Orbital.app\" 2>/dev/null || true\n";
+            out << "rm -rf \"" << destFile << "\" \"$MOUNT_DIR\"\n";
+            out << "open \"$TARGET_DIR/Orbital.app\"\n";
+            out << "rm -f \"$0\"\n";
+            sh.close();
+
+            QFile::setPermissions(shPath, QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner |
+                                              QFileDevice::ReadGroup | QFileDevice::ExeGroup |
+                                              QFileDevice::ReadOther | QFileDevice::ExeOther);
+
+            QProcess::startDetached(QStringLiteral("/bin/bash"), QStringList() << shPath);
+            QCoreApplication::quit();
+            return;
+        } else {
+            m_updating = false;
+            m_updateStatus = QStringLiteral("Güncelleme betiği oluşturulamadı.");
+            Q_EMIT updateChanged();
+            Q_EMIT toast(m_updateStatus);
+        }
 #else
         const QString appImagePath = qEnvironmentVariable("APPIMAGE");
         QFile::setPermissions(destFile, QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner |
