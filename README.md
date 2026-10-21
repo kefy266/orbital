@@ -1,5 +1,7 @@
 # ◉ Orbital
 
+[![Build](https://github.com/kefy266/orbital/actions/workflows/build.yml/badge.svg)](https://github.com/kefy266/orbital/actions/workflows/build.yml) · **Site:** https://kefy266.github.io/orbital
+
 **Skill ve eklenti destekli, sade bir masaüstü AI kod asistanı.** Qt Quick (QML) ile yazıldı, sistemin açık/koyu temasını izler. Kurulumdan hemen sonra API anahtarı gerektirmeyen ücretsiz bulut modelleriyle çalışır; istersen kendi OpenAI, Anthropic, Gemini… anahtarlarını bağlayabilirsin.
 
 ## Özellikler
@@ -9,6 +11,7 @@
 - **Gerçek bir kod ajanı:** dosya okur, yazar, düzenler, komut çalıştırır, arama yapar. Riskli adımlardan önce izin ister; araç başına izin ayarlanabilir.
 - **Skill'ler:** modelin belirli işleri nasıl yapacağını anlatan `SKILL.md` paketleri. Model gerektiğinde kendisi yükler, ya da `/skill-adı` ve `+` menüsüyle mesaja iliştirirsin.
 - **Eklentiler:** tek bir `plugin.json` ile slash komutları, MCP araç sunucuları, betik araçları, paketlenmiş skill'ler, sistem talimatları, eylemler ve prompt hook'ları.
+- **Mağaza:** skill ve eklentileri uygulamanın içinden tek tıkla yükle/kaldır. Katalog bu depodaki `store/` klasöründedir.
 - **Arayüz:** gruplu sohbet geçmişi, akan markdown, KDE renklendirmeli kod blokları, açılır araç kartları, Build/Plan modları.
 
 ## Derleme
@@ -22,6 +25,14 @@ qmake6 orbital.pro -o build.mk && make -f build.mk -j$(nproc)
 ```bash
 ./build/orbital
 ```
+
+Ya da [GitHub Actions](https://github.com/kefy266/orbital/actions) çıktılarından hazır derlemeyi indir (sistemde Qt 6 kurulu olmalı). `v` ile başlayan her etiket otomatik bir sürüm (release) oluşturur.
+
+## Mağazaya katkı
+
+1. `store/skills/<id>/SKILL.md` ya da `store/plugins/<id>/plugin.json` (ve eklentinin dosyaları) ekle.
+2. `store/index.json` içine öğeyi `id`, `type`, `name`, `description`, `version`, `tags` ve `files` alanlarıyla yaz.
+3. `python scripts/build_site.py` ile siteyi güncelle ve PR aç.
 
 ## Mimari
 

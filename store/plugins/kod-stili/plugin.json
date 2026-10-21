@@ -1,0 +1,10 @@
+{
+  "id": "kod-stili",
+  "name": "Kod Stili Kuralları",
+  "version": "1.0.0",
+  "author": "Orbital",
+  "description": "Modelin her yanıtta uyacağı temiz kod kurallarını sistem talimatlarına ekler.",
+  "instructions": [
+    "kurallar.md"
+  ]
+}

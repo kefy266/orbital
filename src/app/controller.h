@@ -48,6 +48,9 @@ class AppController : public QObject
     Q_PROPERTY(QVariantList actions READ actions NOTIFY actionsChanged)
     Q_PROPERTY(QVariantMap permission READ permission NOTIFY permissionChanged)
     Q_PROPERTY(QString themeMode READ themeMode WRITE setThemeMode NOTIFY themeModeChanged)
+    Q_PROPERTY(QVariantList storeItems READ storeItems NOTIFY storeChanged)
+    Q_PROPERTY(bool storeLoading READ storeLoading NOTIFY storeChanged)
+    Q_PROPERTY(QString storeError READ storeError NOTIFY storeChanged)
 
 public:
     explicit AppController(QObject *parent = nullptr);
@@ -129,6 +132,14 @@ public:
     Q_INVOKABLE QString opencodeVersion() const;
     Q_INVOKABLE void setOpencodeVersion(const QString &version);
     Q_INVOKABLE QVariantMap paths() const;
+    // Store: catalog of skills and plugins hosted in the Orbital repository.
+    QVariantList storeItems() const;
+    bool storeLoading() const { return m_storeLoading; }
+    QString storeError() const { return m_storeError; }
+    Q_INVOKABLE void loadStore();
+    Q_INVOKABLE void installStoreItem(const QString &id);
+    Q_INVOKABLE void removeStoreItem(const QString &id);
+
     // Restarts the engine if settings that it reads at startup changed.
     Q_INVOKABLE void applySettings();
 
@@ -150,6 +161,8 @@ Q_SIGNALS:
     void themeModeChanged();
     void toast(const QString &message);
     void providerResult(const QString &id, bool ok, const QString &message);
+    void storeChanged();
+    void storeItemDone(const QString &id, bool ok, const QString &message);
     void scrollToEnd();
 
 private:
@@ -192,5 +205,11 @@ private:
     QList<PermissionRequest> m_permissionQueue;
     QTimer m_sessionRefresh;
     QNetworkAccessManager *m_nam;
+    QVariantList m_store;
+    bool m_storeLoading = false;
+    QString m_storeError;
+    QStringList m_storeBusy;
+    QString storeUrl() const;
+    void fetchStoreFile(const QString &path, std::function<void(const QByteArray &, const QString &)> done);
     QMetaObject::Connection m_mcpConnection;
 };

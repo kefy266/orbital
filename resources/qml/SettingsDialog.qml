@@ -223,31 +223,6 @@ Popup {
                                 }
                             }
                         }
-                        SectionLabel { text: "MOTOR" }
-                        Card {
-                            SettingRow {
-                                title: "Aktif motor"
-                                subtitle: App.engineId === "native" ? "Orbital Core: kendi API anahtarlarınla Anthropic, OpenRouter ve diğer sağlayıcılara doğrudan bağlanır."
-                                                                    : "Orbital Cloud: anahtar gerektirmeyen ücretsiz bulut modelleriyle hazır gelir."
-                                Segmented {
-                                    model: [{ value: "opencode", label: "Cloud" }, { value: "native", label: "Core" }]
-                                    value: App.engineId
-                                    onPicked: v => App.switchEngine(v)
-                                }
-                            }
-                            SettingRow {
-                                title: "Tur başına en fazla adım"
-                                subtitle: "Modelin bir mesajda arka arkaya kaç araç çağrısı yapabileceği."
-                                divider: false
-                                OTextField {
-                                    width: 80
-                                    horizontalAlignment: TextInput.AlignHCenter
-                                    validator: IntValidator { bottom: 1; top: 500 }
-                                    text: dialog.revision >= 0 ? App.maxSteps() : ""
-                                    onEditingFinished: App.setMaxSteps(parseInt(text))
-                                }
-                            }
-                        }
                         SectionLabel { text: "PROJE VE DOSYALAR" }
                         Card {
                             SettingRow {
@@ -370,7 +345,7 @@ Popup {
                         visible: dialog.page === "permissions"
                         Layout.fillWidth: true
                         spacing: 10
-                        PageTitle { title: "İzinler"; subtitle: "Orbital motorunda her araç için ne yapılacağını seç. \"Sor\" seçiliyse çalıştırmadan önce onayın istenir." }
+                        PageTitle { title: "İzinler"; subtitle: "Orbital'in her araç için ne yapacağını seç. \"Sor\" seçiliyse çalıştırmadan önce onayın istenir." }
                         Card {
                             Repeater {
                                 model: [

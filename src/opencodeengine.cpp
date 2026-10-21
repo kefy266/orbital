@@ -193,6 +193,29 @@ void OpencodeEngine::buildOverlay(std::function<void(const QByteArray &)> done)
         const QStringList instructions = m_plugins->instructionFiles();
         if (!instructions.isEmpty())
             overlay.insert(QStringLiteral("instructions"), QJsonArray::fromStringList(instructions));
+        // Orbital's per-tool permission settings, in the engine's vocabulary.
+        const QJsonObject perms = Config::raw().value(QStringLiteral("permissions")).toObject();
+        if (!perms.isEmpty()) {
+            const auto policy = [&perms](const QString &tool) {
+                const QString v = perms.value(tool).toString(perms.value(QStringLiteral("*")).toString(QStringLiteral("ask")));
+                return v == QLatin1String("allow") || v == QLatin1String("deny") ? v : QStringLiteral("ask");
+            };
+            const auto strictest = [](const QString &a, const QString &b) {
+                if (a == QLatin1String("deny") || b == QLatin1String("deny"))
+                    return QStringLiteral("deny");
+                if (a == QLatin1String("ask") || b == QLatin1String("ask"))
+                    return QStringLiteral("ask");
+                return QStringLiteral("allow");
+            };
+            QJsonObject permission;
+            for (const char *tool : {"read", "list", "glob", "grep", "skill", "bash"})
+                permission.insert(QLatin1String(tool), policy(QLatin1String(tool)));
+            permission.insert(QStringLiteral("edit"), strictest(policy(QStringLiteral("write")), policy(QStringLiteral("edit"))));
+            permission.insert(QStringLiteral("webfetch"), policy(QStringLiteral("*")));
+            permission.insert(QStringLiteral("websearch"), policy(QStringLiteral("*")));
+            overlay.insert(QStringLiteral("permission"), permission);
+        }
+
         const QStringList plugins = m_plugins->opencodePlugins();
         if (!plugins.isEmpty())
             overlay.insert(QStringLiteral("plugin"), QJsonArray::fromStringList(plugins));

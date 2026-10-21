@@ -8,6 +8,7 @@ Rectangle {
     id: root
     color: Theme.sidebar
     signal openSettings(string page)
+    signal openStore()
     signal collapse()
 
     Rectangle {
@@ -231,6 +232,7 @@ Rectangle {
                 }
             }
         }
+        NavRow { text: "Mağaza"; iconName: "store"; onClicked: root.openStore() }
         NavRow { text: "Skill'ler"; iconName: "sparkle"; onClicked: root.openSettings("skills") }
         NavRow { text: "Eklentiler"; iconName: "blocks"; onClicked: root.openSettings("plugins") }
         NavRow { text: "Ayarlar"; iconName: "settings"; onClicked: root.openSettings("general") }

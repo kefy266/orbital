@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orbital — Sade ve güçlü AI kod asistanı</title>
+<meta name="description" content="Orbital: skill ve eklenti destekli, ücretsiz bulut modelleriyle hazır gelen masaüstü AI kod asistanı.">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #faf9f5; --bg-alt: #f3f1ea; --surface: #ffffff; --border: #e4e1d6;
+    --text: #1f1e1d; --muted: #5e5d58; --faint: #8d8b84;
+    --accent: #6e56cf; --accent-hover: #5d46bd; --accent-soft: #ece8fb;
+    --code: #f7f6f1; --shadow: 0 18px 50px rgba(31, 30, 29, .12);
+    --grad: linear-gradient(135deg, #8b5cf6, #3b82f6);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1f1e1d; --bg-alt: #262624; --surface: #2b2b29; --border: #3e3d3a;
+      --text: #f2f1ec; --muted: #bfbdb4; --faint: #8e8c84;
+      --accent: #9b8cff; --accent-hover: #ad9fff; --accent-soft: #2f2a4a;
+      --code: #1a1a18; --shadow: 0 18px 50px rgba(0, 0, 0, .45);
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.6 Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; text-decoration: none; }
+  img { max-width: 100%; height: auto; display: block; }
+  code, pre { font-family: "JetBrains Mono", ui-monospace, monospace; }
+  .wrap { width: min(1120px, 100% - 32px); margin-inline: auto; }
+
+  /* nav */
+  nav { position: sticky; top: 0; z-index: 10; backdrop-filter: blur(14px);
+        background: color-mix(in srgb, var(--bg) 82%, transparent); border-bottom: 1px solid var(--border); }
+  nav .wrap { display: flex; align-items: center; gap: 28px; height: 64px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; }
+  .brand img { width: 28px; height: 28px; }
+  .links { display: flex; gap: 22px; margin-left: auto; color: var(--muted); font-size: 15px; }
+  .links a:hover { color: var(--text); }
+  .btn { display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 20px; border-radius: 12px;
+         font-weight: 600; font-size: 15px; border: 1px solid var(--border); background: var(--surface); transition: .15s; }
+  .btn:hover { background: var(--bg-alt); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.primary:hover { background: var(--accent-hover); }
+  .btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+  nav .btn { height: 38px; padding: 0 14px; font-size: 14px; }
+
+  /* hero */
+  .hero { padding: 88px 0 40px; text-align: center; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px;
+          background: var(--accent-soft); color: var(--accent); font-size: 14px; font-weight: 600; }
+  h1 { font-size: clamp(38px, 6vw, 64px); line-height: 1.08; letter-spacing: -0.03em; margin: 22px auto 18px; max-width: 860px; font-weight: 800; }
+  h1 span { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .lead { font-size: clamp(17px, 2vw, 20px); color: var(--muted); max-width: 680px; margin: 0 auto 32px; }
+  .cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .shot { margin: 56px auto 0; border-radius: 18px; overflow: hidden; border: 1px solid var(--border);
+          box-shadow: var(--shadow); background: var(--surface); max-width: 1080px; }
+  .shot .bar { display: flex; gap: 7px; padding: 12px 14px; border-bottom: 1px solid var(--border); background: var(--bg-alt); }
+  .shot .bar i { width: 11px; height: 11px; border-radius: 50%; background: var(--border); }
+
+  /* sections */
+  section { padding: 96px 0; }
+  .section-head { text-align: center; max-width: 680px; margin: 0 auto 48px; }
+  .eyebrow { color: var(--accent); font-weight: 700; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; }
+  h2 { font-size: clamp(30px, 4vw, 42px); line-height: 1.15; letter-spacing: -0.02em; margin: 10px 0 14px; }
+  .section-head p { color: var(--muted); font-size: 18px; margin: 0; }
+  .alt { background: var(--bg-alt); border-block: 1px solid var(--border); }
+
+  .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+  .feature { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 26px; }
+  .feature .ic { width: 42px; height: 42px; border-radius: 11px; background: var(--accent-soft); display: grid; place-items: center; margin-bottom: 16px; }
+  .feature svg { width: 21px; height: 21px; fill: none; stroke: var(--accent); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .feature h3 { margin: 0 0 6px; font-size: 18px; }
+  .feature p { margin: 0; color: var(--muted); font-size: 15px; }
+
+  .gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+  .gallery figure { margin: 0; }
+  .gallery img { border-radius: 14px; border: 1px solid var(--border); box-shadow: var(--shadow); }
+  .gallery figcaption { margin-top: 12px; color: var(--muted); font-size: 15px; text-align: center; }
+
+  /* store */
+  .filters { display: flex; gap: 8px; justify-content: center; margin-bottom: 28px; flex-wrap: wrap; }
+  .filters button { font: inherit; font-size: 14px; font-weight: 600; padding: 8px 16px; border-radius: 999px; cursor: pointer;
+                    border: 1px solid var(--border); background: var(--surface); color: var(--muted); }
+  .filters button.on { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .store { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
+  .store-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px;
+                display: grid; grid-template-columns: 38px 1fr; column-gap: 12px; row-gap: 10px; align-content: start; }
+  .store-card[hidden] { display: none; }
+  .store-icon { width: 38px; height: 38px; border-radius: 10px; background: var(--accent-soft); display: grid; place-items: center; }
+  .store-icon svg { width: 19px; height: 19px; fill: none; stroke: var(--accent); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .store-card h4 { margin: 0; font-size: 16px; }
+  .store-card .meta { margin: 0; color: var(--faint); font-size: 13px; }
+  .store-card .desc { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 14px; }
+  .tags { grid-column: 1 / -1; display: flex; gap: 6px; }
+  .tag { font-size: 12px; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+
+  /* install */
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  .step { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; min-width: 0; }
+  .step .n { width: 30px; height: 30px; border-radius: 50%; background: var(--grad); color: #fff; font-weight: 700;
+             display: grid; place-items: center; font-size: 14px; margin-bottom: 14px; }
+  .step h3 { margin: 0 0 8px; font-size: 17px; }
+  .step p { margin: 0 0 12px; color: var(--muted); font-size: 15px; }
+  pre { margin: 0; background: var(--code); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px;
+        font-size: 13.5px; overflow-x: auto; white-space: pre; }
+
+  .note { max-width: 820px; margin: 0 auto; padding: 18px 22px; border-radius: 14px; border: 1px solid var(--border);
+          background: var(--surface); color: var(--muted); font-size: 14.5px; }
+  .note strong { color: var(--text); }
+  footer { padding: 40px 0 56px; color: var(--faint); font-size: 14px; }
+  footer .wrap { display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+
+  @media (max-width: 720px) {
+    .links { display: none; }
+    nav .btn { margin-left: auto; }
+    .hero { padding-top: 56px; }
+    section { padding: 64px 0; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <a class="brand" href="#"><img src="assets/logo.svg" alt="">Orbital</a>
+    <div class="links">
+      <a href="#ozellikler">Özellikler</a>
+      <a href="#ekranlar">Ekranlar</a>
+      <a href="#magaza">Mağaza</a>
+      <a href="#kurulum">Kurulum</a>
+    </div>
+    <a class="btn" href="https://github.com/kefy266/orbital">
+      <svg viewBox="0 0 24 24"><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"/></svg>
+      GitHub
+    </a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="pill">✦ Ücretsiz bulut modelleriyle hazır gelir</span>
+    <h1>Kod yazmak için <span>sade ve güçlü</span> bir AI asistanı</h1>
+    <p class="lead">Orbital projenin içinde çalışır: dosyaları okur, düzenler, komut çalıştırır. Skill'lerle yeni işler öğrenir, eklentilerle büyür. Kurduğun anda anahtarsız modellerle başla, istediğinde kendi API anahtarını bağla.</p>
+    <div class="cta">
+      <a class="btn primary" href="#kurulum">
+        <svg viewBox="0 0 24 24"><path d="M12 4v11M7 10.5 12 15.5l5-5M5 20h14"/></svg>
+        Kur ve başla
+      </a>
+      <a class="btn" href="https://github.com/kefy266/orbital">Kaynak kodu</a>
+    </div>
+    <div class="shot">
+      <div class="bar"><i></i><i></i><i></i></div>
+      <img src="assets/chat.png" alt="Orbital sohbet ekranı: Python kodu ve açıklaması" width="1320" height="860">
+    </div>
+  </div>
+</header>
+
+<section id="ozellikler">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">Özellikler</div>
+      <h2>İhtiyacın olan her şey, fazlası değil</h2>
+      <p>Tanıdık bir sohbet arayüzü; arkasında projenle gerçekten çalışan bir ajan.</p>
+    </div>
+    <div class="features">
+      <div class="feature">
+        <div class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.5 2.6 3.5 5.4 3.5 8.5s-1 5.9-3.5 8.5c-2.5-2.6-3.5-5.4-3.5-8.5s1-5.9 3.5-8.5z"/></svg></div>
+        <h3>Ücretsiz bulut modelleri</h3>
+        <p>DeepSeek, GLM, MiMo, Nemotron ve daha fazlası. Hesap ya da API anahtarı gerekmez.</p>
+      </div>
+      <div class="feature">
+        <div class="ic"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="7" rx="2"/><rect x="4" y="13" width="16" height="7" rx="2"/><path d="M8 7.5h.01M8 16.5h.01"/></svg></div>
+        <h3>Kendi sağlayıcın</h3>
+        <p>OpenAI, Anthropic, Gemini, OpenRouter, DeepSeek, Groq, Mistral, xAI: anahtarını yapıştır, test edilsin, modeller menüne gelsin.</p>
+      </div>
+      <div class="feature">
+        <div class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="15" rx="2.5"/><path d="m7.5 10 2.5 2-2.5 2M12.5 15h4"/></svg></div>
+        <h3>Gerçek bir kod ajanı</h3>
+        <p>Dosya okur, yazar, düzenler, arar ve komut çalıştırır. Riskli adımlardan önce iznini ister.</p>
+      </div>
+      <div class="feature">
+        <div class="ic"><svg viewBox="0 0 24 24"><path d="M12 3.5c.6 4.4 2.4 6.3 7 7-4.6.7-6.4 2.6-7 7-.6-4.4-2.4-6.3-7-7 4.6-.7 6.4-2.6 7-7z"/></svg></div>
+        <h3>Skill'ler</h3>
+        <p>Modelin belirli işleri nasıl yapacağını anlatan talimat paketleri. Model gerektiğinde kendisi yükler.</p>
+      </div>
+      <div class="feature">
+        <div class="ic"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/><path d="M16.5 4v6M13.5 7h6"/></svg></div>
+        <h3>Eklentiler</h3>
+        <p>Tek bir <code>plugin.json</code> ile slash komutları, MCP araçları, betikler, talimatlar ve hook'lar.</p>
+      </div>
+      <div class="feature">
+        <div class="ic"><svg viewBox="0 0 24 24"><path d="M5 8h14l-1 11.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 19.5z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/></svg></div>
+        <h3>Mağaza</h3>
+        <p>Skill ve eklentileri uygulamanın içinden tek tıkla yükle ya da kaldır.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="ekranlar" class="alt">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">Ekranlar</div>
+      <h2>Açık ya da koyu, her zaman sakin</h2>
+      <p>Sistem temanı izler; okunaklı yazı, renklendirilmiş kod ve dikkat dağıtmayan bir düzen.</p>
+    </div>
+    <div class="gallery">
+      <figure><img src="assets/welcome-dark.png" alt="Karşılama ekranı, koyu tema" loading="lazy" width="1320" height="860"><figcaption>Karşılama ekranı ve hazır öneriler</figcaption></figure>
+      <figure><img src="assets/providers.png" alt="Sağlayıcılar ayarları" loading="lazy" width="1320" height="860"><figcaption>API anahtarıyla sağlayıcı bağlama</figcaption></figure>
+      <figure><img src="assets/store-dark.png" alt="Skill ve eklenti mağazası" loading="lazy" width="1320" height="860"><figcaption>Skill ve eklenti mağazası</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<section id="magaza">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">Mağaza</div>
+      <h2>16 skill ve eklenti, tek tıkla</h2>
+      <p>Hepsi Orbital içindeki Mağaza'dan yüklenir. Kendi skill'ini ya da eklentini depoya ekleyerek herkesle paylaşabilirsin.</p>
+    </div>
+    <div class="filters" role="tablist">
+      <button class="on" data-filter="all">Tümü</button>
+      <button data-filter="skill">Skill'ler</button>
+      <button data-filter="plugin">Eklentiler</button>
+    </div>
+    <div class="store">
+<article class="store-card" data-type="skill"><div class="store-icon"><svg viewBox="0 0 24 24"><path d="M12 3.5c.6 4.4 2.4 6.3 7 7-4.6.7-6.4 2.6-7 7-.6-4.4-2.4-6.3-7-7 4.6-.7 6.4-2.6 7-7z"/></svg></div><div><h4>Kod İnceleme</h4><p class="meta">Skill · v1.0.0</p></div><p class="desc">Hataları, riskleri ve eksik testleri önem sırasına göre raporlar.</p><div class="tags"><span class="tag">kalite</span></div></article>
+<article class="store-card" data-type="skill"><div class="store-icon"><svg viewBox="0 0 24 24"><path d="M12 3.5c.6 4.4 2.4 6.3 7 7-4.6.7-6.4 2.6-7 7-.6-4.4-2.4-6.3-7-7 4.6-.7 6.4-2.6 7-7z"/></svg></div><div><h4>Commit Mesajı</h4><p class="meta">Skill · v1.0.0</p></div><p class="desc">Değişikliklerden Conventional Commits biçiminde mesaj önerir.</p><div class="tags"><span class="tag">git</span></div></article>
+<article class="store-card" data-type="skill"><div class="store-icon"><svg viewBox="0 0 24 24"><path d="M12 3.5c.6 4.4 2.4 6.3 7 7-4.6.7-6.4 2.6-7 7-.6-4.4-2.4-6.3-7-7 4.6-.7 6.4-2.6 7-7z"/></svg></div><div><h4>Türkçe Yanıt</h4><p class="meta">Skill · v1.0.0</p></div><p class="desc">Tüm açıklamaları akıcı Türkçe ile yazar.</p><div class="tags"><span class="tag">dil</span></div></article>
+<article class="store-card" data-type="skill"><div class="store-icon"><svg viewBox="0 0 24 24"><path d="M12 3.5c.6 4.4 2.4 6.3 7 7-4.6.7-6.4 2.6-7 7-.6-4.4-2.4-6.3-7-7 4.6-.7 6.4-2.6 7-7z"/></svg></div><div><h4>Test Yazımı</h4><p class="meta">Skill · v1.0.0</p></div><p class="desc">Projenin test çatısına uygun, anlamlı birim testleri yazar.</p><div class="tags"><span class="tag">test</span><span class="tag">kalite</span></div></article>
+<article class="store-card" data-type="skill"><div class="store-icon"><svg viewBox="0 0 24 24"><path d="M12 3.5c.6 4.4 2.4 6.3 7 7-4.6.7-6.4 2.6-7 7-.6-4.4-2.4-6.3-7-7 4.6-.7 6.4-2.6 7-7z"/></svg></div><div><h4>Hata Ayıklama</h4><p class="meta">Skill · v1.0.0</p></div><p class="desc">Hatayı yeniden üretir, kök nedeni bulur ve en küçük düzeltmeyi yapar.</p><div class="tags"><span class="tag">hata</span></div></article>
+<article class="store-card" data-type="skill"><div class="store-icon"><svg viewBox="0 0 24 24"><path d="M12 3.5c.6 4.4 2.4 6.3 7 7-4.6.7-6.4 2.6-7 7-.6-4.4-2.4-6.3-7-7 4.6-.7 6.4-2.6 7-7z"/></svg></div><div><h4>Güvenli Refactor</h4><p class="meta">Skill · v1.0.0</p></div><p class="desc">Davranışı değiştirmeden kodu küçük, doğrulanmış adımlarla iyileştirir.</p><div class="tags"><span class="tag">kalite</span></div></article>
+<article class="store-card" data-type="skill"><div class="store-icon"><svg viewBox="0 0 24 24"><path d="M12 3.5c.6 4.4 2.4 6.3 7 7-4.6.7-6.4 2.6-7 7-.6-4.4-2.4-6.3-7-7 4.6-.7 6.4-2.6 7-7z"/></svg></div><div><h4>Dokümantasyon</h4><p class="meta">Skill · v1.0.0</p></div><p class="desc">README, kullanım kılavuzu ve kod içi açıklamaları yazar.</p><div class="tags"><span class="tag">belge</span></div></article>
+<article class="store-card" data-type="skill"><div class="store-icon"><svg viewBox="0 0 24 24"><path d="M12 3.5c.6 4.4 2.4 6.3 7 7-4.6.7-6.4 2.6-7 7-.6-4.4-2.4-6.3-7-7 4.6-.7 6.4-2.6 7-7z"/></svg></div><div><h4>Güvenlik İncelemesi</h4><p class="meta">Skill · v1.0.0</p></div><p class="desc">Enjeksiyon, kimlik doğrulama, sır sızıntısı gibi açıkları arar.</p><div class="tags"><span class="tag">güvenlik</span><span class="tag">kalite</span></div></article>
+<article class="store-card" data-type="skill"><div class="store-icon"><svg viewBox="0 0 24 24"><path d="M12 3.5c.6 4.4 2.4 6.3 7 7-4.6.7-6.4 2.6-7 7-.6-4.4-2.4-6.3-7-7 4.6-.7 6.4-2.6 7-7z"/></svg></div><div><h4>SQL Uzmanı</h4><p class="meta">Skill · v1.0.0</p></div><p class="desc">Doğru, okunaklı ve hızlı SQL sorguları yazar; indeks önerir.</p><div class="tags"><span class="tag">veritabanı</span></div></article>
+<article class="store-card" data-type="skill"><div class="store-icon"><svg viewBox="0 0 24 24"><path d="M12 3.5c.6 4.4 2.4 6.3 7 7-4.6.7-6.4 2.6-7 7-.6-4.4-2.4-6.3-7-7 4.6-.7 6.4-2.6 7-7z"/></svg></div><div><h4>Docker</h4><p class="meta">Skill · v1.0.0</p></div><p class="desc">Küçük, güvenli ve önbellek dostu Dockerfile ve compose dosyaları hazırlar.</p><div class="tags"><span class="tag">devops</span></div></article>
+<article class="store-card" data-type="plugin"><div class="store-icon"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/><path d="M16.5 4v6M13.5 7h6"/></svg></div><div><h4>Git Araçları</h4><p class="meta">Eklenti · v1.0.0</p></div><p class="desc">Commit ve changelog komutları, git durumu eylemleri ve güvenli git akışı skill&#x27;i.</p><div class="tags"><span class="tag">git</span></div></article>
+<article class="store-card" data-type="plugin"><div class="store-icon"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/><path d="M16.5 4v6M13.5 7h6"/></svg></div><div><h4>Sistem Araçları</h4><p class="meta">Eklenti · v1.0.0</p></div><p class="desc">Modelin işletim sistemi, CPU, bellek ve disk bilgisini sorgulayabildiği bir araç.</p><div class="tags"><span class="tag">sistem</span></div></article>
+<article class="store-card" data-type="plugin"><div class="store-icon"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/><path d="M16.5 4v6M13.5 7h6"/></svg></div><div><h4>Gizli Anahtar Koruması</h4><p class="meta">Eklenti · v1.0.0</p></div><p class="desc">Mesajında API anahtarı ya da özel anahtar varsa gönderimi engeller.</p><div class="tags"><span class="tag">güvenlik</span></div></article>
+<article class="store-card" data-type="plugin"><div class="store-icon"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/><path d="M16.5 4v6M13.5 7h6"/></svg></div><div><h4>Web Fetch (MCP)</h4><p class="meta">Eklenti · v1.0.0</p></div><p class="desc">Modelin web sayfalarını okumasını sağlayan MCP sunucusu. uv (uvx) gerektirir.</p><div class="tags"><span class="tag">web</span><span class="tag">mcp</span></div></article>
+<article class="store-card" data-type="plugin"><div class="store-icon"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/><path d="M16.5 4v6M13.5 7h6"/></svg></div><div><h4>GitHub CLI</h4><p class="meta">Eklenti · v1.0.0</p></div><p class="desc">PR özeti ve issue taslağı komutları; açık PR/issue listeleri. gh gerektirir.</p><div class="tags"><span class="tag">git</span><span class="tag">github</span></div></article>
+<article class="store-card" data-type="plugin"><div class="store-icon"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/><path d="M16.5 4v6M13.5 7h6"/></svg></div><div><h4>Kod Stili Kuralları</h4><p class="meta">Eklenti · v1.0.0</p></div><p class="desc">Temiz kod kurallarını modelin sistem talimatlarına ekler.</p><div class="tags"><span class="tag">kalite</span></div></article>
+    </div>
+  </div>
+</section>
+
+<section id="kurulum" class="alt">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">Kurulum</div>
+      <h2>Üç adımda hazır</h2>
+      <p>Linux için. Her commit'te GitHub Actions da derleyip hazır paket üretir.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="n">1</div>
+        <h3>Gerekenleri kur</h3>
+        <p>Arch / CachyOS paket adlarıyla:</p>
+        <pre>sudo pacman -S qt6-base qt6-declarative \
+  qt6-svg syntax-highlighting base-devel</pre>
+      </div>
+      <div class="step">
+        <div class="n">2</div>
+        <h3>İndir ve derle</h3>
+        <p>Depoyu klonla ve derle:</p>
+        <pre>git clone https://github.com/kefy266/orbital
+cd orbital
+qmake6 orbital.pro -o build.mk
+make -f build.mk -j$(nproc)</pre>
+      </div>
+      <div class="step">
+        <div class="n">3</div>
+        <h3>Çalıştır</h3>
+        <p>İlk açılışta bulut modelleri kendiliğinden hazırlanır:</p>
+        <pre>./build/orbital</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="note">
+      <strong>Bağımsızlık notu:</strong> Orbital, OpenCode ekibi tarafından geliştirilmemiştir ve OpenCode ile hiçbir şekilde bağlantılı değildir. Açık kaynak <a href="https://github.com/anomalyco/opencode" style="text-decoration:underline">opencode</a> projesini altyapısının bir parçası olarak kullanan bağımsız bir projedir.
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span class="brand" style="font-size:15px"><img src="assets/logo.svg" alt="" style="width:22px;height:22px">Orbital</span>
+    <span>Açık kaynak · <a href="https://github.com/kefy266/orbital" style="text-decoration:underline">github.com/kefy266/orbital</a></span>
+  </div>
+</footer>
+
+<script>
+  document.querySelectorAll('.filters button').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('.filters button').forEach(x => x.classList.toggle('on', x === b));
+    const f = b.dataset.filter;
+    document.querySelectorAll('.store-card').forEach(c => { c.hidden = f !== 'all' && c.dataset.type !== f; });
+  }));
+</script>
+</body>
+</html>

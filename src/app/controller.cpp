@@ -16,6 +16,9 @@
 #include <QDir>
 #include <QGuiApplication>
 #include <QJsonArray>
+#include <QJsonDocument>
+#include <QNetworkReply>
+#include <QFile>
 #include <QProcess>
 #include <QRegularExpression>
 #include <QUrl>
@@ -55,7 +58,8 @@ AppController::~AppController()
 
 void AppController::start()
 {
-    switchEngine(Paths::loadSettings().value(QStringLiteral("engine")).toString(QStringLiteral("opencode")));
+    // One engine for everyone: free cloud models plus any provider the user connects.
+    switchEngine(QStringLiteral("opencode"));
 }
 
 void AppController::reloadExtensions()
@@ -960,6 +964,7 @@ void AppController::setPermission(const QString &tool, const QString &policy)
     perms.insert(tool, policy);
     config.insert(QStringLiteral("permissions"), perms);
     Config::saveRaw(config, nullptr);
+    m_settingsDirty = true; // the engine reads permissions at startup
 }
 
 int AppController::maxSteps() const
@@ -997,6 +1002,171 @@ QVariantMap AppController::paths() const
             {QStringLiteral("data"), Paths::dataDir()},
             {QStringLiteral("engine"), Paths::dataDir() + QStringLiteral("/engine")},
             {QStringLiteral("opencodeHome"), OpencodeEngine::homeDir()}};
+}
+
+// ---------------------------------------------------------------- store
+
+QString AppController::storeUrl() const
+{
+    const QString env = qEnvironmentVariable("ORBITAL_STORE_URL");
+    if (!env.isEmpty())
+        return env;
+    return Config::raw().value(QStringLiteral("storeUrl"))
+        .toString(QStringLiteral("https://raw.githubusercontent.com/kefy266/orbital/main/store"));
+}
+
+void AppController::fetchStoreFile(const QString &path, std::function<void(const QByteArray &, const QString &)> done)
+{
+    const QString base = storeUrl();
+    if (base.startsWith(QLatin1Char('/')) || base.startsWith(QStringLiteral("file:"))) {
+        QFile f(QUrl(base).isLocalFile() ? QUrl(base).toLocalFile() + QLatin1Char('/') + path : base + QLatin1Char('/') + path);
+        if (!f.open(QIODevice::ReadOnly)) {
+            done({}, f.errorString());
+            return;
+        }
+        done(f.readAll(), {});
+        return;
+    }
+    QNetworkRequest req(QUrl(base + QLatin1Char('/') + path));
+    req.setTransferTimeout(20000);
+    QNetworkReply *reply = m_nam->get(req);
+    connect(reply, &QNetworkReply::finished, this, [reply, done] {
+        reply->deleteLater();
+        if (reply->error() != QNetworkReply::NoError) {
+            done({}, reply->errorString());
+            return;
+        }
+        done(reply->readAll(), {});
+    });
+}
+
+static QString installedPath(const QString &type, const QString &id)
+{
+    return type == QLatin1String("plugin") ? Paths::pluginsDir() + QLatin1Char('/') + id + QStringLiteral("/plugin.json")
+                                           : Paths::skillsDir() + QLatin1Char('/') + id + QStringLiteral("/SKILL.md");
+}
+
+QVariantList AppController::storeItems() const
+{
+    QVariantList out;
+    for (const QVariant &v : m_store) {
+        QVariantMap m = v.toMap();
+        const QString id = m.value(QStringLiteral("id")).toString();
+        m.insert(QStringLiteral("installed"), QFile::exists(installedPath(m.value(QStringLiteral("type")).toString(), id)));
+        m.insert(QStringLiteral("busy"), m_storeBusy.contains(id));
+        out << m;
+    }
+    return out;
+}
+
+void AppController::loadStore()
+{
+    m_storeLoading = true;
+    m_storeError.clear();
+    Q_EMIT storeChanged();
+    fetchStoreFile(QStringLiteral("index.json"), [this](const QByteArray &data, const QString &error) {
+        m_storeLoading = false;
+        if (!error.isEmpty()) {
+            m_storeError = QStringLiteral("Mağazaya ulaşılamadı: %1").arg(error);
+        } else {
+            m_store = QJsonDocument::fromJson(data).object().value(QStringLiteral("items")).toArray().toVariantList();
+            if (m_store.isEmpty())
+                m_storeError = QStringLiteral("Mağaza kataloğu okunamadı.");
+        }
+        Q_EMIT storeChanged();
+    });
+}
+
+void AppController::installStoreItem(const QString &id)
+{
+    QVariantMap item;
+    for (const QVariant &v : std::as_const(m_store))
+        if (v.toMap().value(QStringLiteral("id")).toString() == id)
+            item = v.toMap();
+    if (item.isEmpty() || m_storeBusy.contains(id))
+        return;
+    const QString type = item.value(QStringLiteral("type")).toString();
+    const QStringList files = item.value(QStringLiteral("files")).toStringList();
+    const QString target = (type == QLatin1String("plugin") ? Paths::pluginsDir() : Paths::skillsDir()) + QLatin1Char('/') + id;
+    const QString staging = Paths::dataDir() + QStringLiteral("/store-staging/") + id;
+    QDir(staging).removeRecursively();
+    m_storeBusy << id;
+    Q_EMIT storeChanged();
+
+    // Download every file into a staging folder, then move it into place in one step.
+    auto remaining = std::make_shared<QStringList>(files);
+    auto failed = std::make_shared<QString>();
+    auto next = std::make_shared<std::function<void()>>();
+    *next = [this, id, type, target, staging, remaining, failed, next] {
+        if (remaining->isEmpty() || !failed->isEmpty()) {
+            m_storeBusy.removeAll(id);
+            if (failed->isEmpty()) {
+                QDir(target).removeRecursively();
+                QDir().mkpath(QFileInfo(target).absolutePath());
+                QDir().rename(staging, target);
+                reloadExtensions();
+                refreshCommands();
+                m_settingsDirty = true;
+                if (type == QLatin1String("plugin"))
+                    applySettings(); // plugins hook into the engine at startup
+                else
+                    m_settingsDirty = true;
+                Q_EMIT storeItemDone(id, true, QStringLiteral("Yüklendi"));
+            } else {
+                QDir(staging).removeRecursively();
+                Q_EMIT storeItemDone(id, false, *failed);
+            }
+            Q_EMIT storeChanged();
+            *next = nullptr; // break the self-reference
+            return;
+        }
+        const QString rel = remaining->takeFirst();
+        if (rel.contains(QStringLiteral(".."))) {
+            *failed = QStringLiteral("Geçersiz dosya yolu: %1").arg(rel);
+            (*next)();
+            return;
+        }
+        fetchStoreFile(type + QStringLiteral("s/") + id + QLatin1Char('/') + rel,
+                       [staging, rel, failed, next](const QByteArray &data, const QString &error) {
+                           if (!error.isEmpty()) {
+                               *failed = QStringLiteral("İndirilemedi (%1): %2").arg(rel, error);
+                           } else {
+                               const QString path = staging + QLatin1Char('/') + rel;
+                               QDir().mkpath(QFileInfo(path).absolutePath());
+                               QFile f(path);
+                               if (f.open(QIODevice::WriteOnly)) {
+                                   f.write(data);
+                                   f.close();
+                                   if (rel.endsWith(QStringLiteral(".sh")))
+                                       f.setPermissions(f.permissions() | QFile::ExeOwner | QFile::ExeUser);
+                               } else {
+                                   *failed = f.errorString();
+                               }
+                           }
+                           (*next)();
+                       });
+    };
+    (*next)();
+}
+
+void AppController::removeStoreItem(const QString &id)
+{
+    for (const QVariant &v : std::as_const(m_store)) {
+        const QVariantMap m = v.toMap();
+        if (m.value(QStringLiteral("id")).toString() != id)
+            continue;
+        const QString type = m.value(QStringLiteral("type")).toString();
+        QString error;
+        const bool ok = type == QLatin1String("plugin") ? m_plugins->remove(id, &error) : m_skills->remove(id, &error);
+        reloadExtensions();
+        refreshCommands();
+        m_settingsDirty = true;
+        if (type == QLatin1String("plugin"))
+            applySettings();
+        Q_EMIT storeItemDone(id, ok, ok ? QStringLiteral("Kaldırıldı") : error);
+        Q_EMIT storeChanged();
+        return;
+    }
 }
 
 void AppController::applySettings()

@@ -383,7 +383,9 @@ QVariant SessionModel::data(const QModelIndex &index, int role) const
     const Row &r = m_rows.at(index.row());
     switch (role) {
     case IdRole: return r.id;
-    case TitleRole: return r.title.isEmpty() ? QStringLiteral("Yeni sohbet") : r.title;
+    case TitleRole:
+        // The engine names untitled sessions "New session - <timestamp>".
+        return r.title.isEmpty() || r.title.startsWith(QStringLiteral("New session - ")) ? QStringLiteral("Yeni sohbet") : r.title;
     case TimeRole: return QDateTime::fromMSecsSinceEpoch(r.updated).toString(QStringLiteral("dd.MM.yyyy HH:mm"));
     case SectionRole: {
         const QDate d = QDateTime::fromMSecsSinceEpoch(r.updated).date();

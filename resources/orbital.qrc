@@ -25,6 +25,7 @@
     <file>qml/PermissionDialog.qml</file>
     <file>qml/SettingsDialog.qml</file>
     <file>qml/Toast.qml</file>
+    <file>qml/StoreDialog.qml</file>
     <file alias="bundled/skills/kod-inceleme/SKILL.md">skills/kod-inceleme/SKILL.md</file>
     <file alias="bundled/skills/commit-mesaji/SKILL.md">skills/commit-mesaji/SKILL.md</file>
     <file alias="bundled/skills/turkce-yanit/SKILL.md">skills/turkce-yanit/SKILL.md</file>

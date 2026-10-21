@@ -1,0 +1,75 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  linux:
+    name: Linux (Qt 6)
+    runs-on: ubuntu-latest
+    # Orbital needs a recent Qt 6 (Quick Effects, KSyntaxHighlighting); Arch ships it.
+    container: archlinux:latest
+    steps:
+      - name: Install dependencies
+        run: |
+          pacman -Syu --noconfirm --needed base-devel git python \
+            qt6-base qt6-declarative qt6-svg syntax-highlighting ttf-dejavu
+
+      - uses: actions/checkout@v4
+
+      - name: Check store catalog and site
+        run: |
+          python -c "import json; items = json.load(open('store/index.json'))['items']; print(len(items), 'store items')"
+          python scripts/build_site.py
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git diff --exit-code docs/index.html || (echo "docs/index.html is stale: run scripts/build_site.py" && exit 1)
+
+      - name: Build Orbital
+        run: |
+          qmake6 orbital.pro -o build.mk
+          make -f build.mk -j"$(nproc)"
+
+      - name: Build engine test
+        run: |
+          cd tests
+          qmake6 enginetest.pro -o enginetest.mk
+          make -f enginetest.mk -j"$(nproc)"
+
+      - name: Smoke test (UI loads offscreen)
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
+          ORBITAL_SCREENSHOT: ${{ github.workspace }}/smoke.png
+          ORBITAL_SCREENSHOT_DELAY: "4000"
+          XDG_CONFIG_HOME: ${{ runner.temp }}/cfg
+          XDG_DATA_HOME: ${{ runner.temp }}/data
+        run: |
+          timeout 60 ./build/orbital
+          test -s smoke.png
+
+      - name: Package
+        run: |
+          mkdir -p dist/orbital
+          cp build/orbital README.md dist/orbital/
+          tar -C dist -czf orbital-linux-x86_64.tar.gz orbital
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: orbital-linux-x86_64
+          path: |
+            orbital-linux-x86_64.tar.gz
+            smoke.png
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: orbital-linux-x86_64.tar.gz
+          generate_release_notes: true

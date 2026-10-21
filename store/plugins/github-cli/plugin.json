@@ -1,0 +1,34 @@
+{
+  "id": "github-cli",
+  "name": "GitHub CLI",
+  "version": "1.0.0",
+  "author": "Orbital",
+  "description": "GitHub için komutlar ve eylemler: PR özeti, issue taslağı, açık PR ve issue listeleri. gh kurulu ve oturum açık olmalı.",
+  "commands": {
+    "pr-ozeti": {
+      "description": "Mevcut dalın değişikliklerinden PR açıklaması yaz",
+      "template": "Run `git log --oneline origin/HEAD..HEAD` and `git diff --stat origin/HEAD...HEAD`. Write a pull request title and description (summary, changes, how to test). Do not create the PR. $ARGUMENTS"
+    },
+    "issue-taslagi": {
+      "description": "Bir hata ya da istek için issue metni hazırla",
+      "template": "Write a clear GitHub issue for the following, with title, context, steps to reproduce or acceptance criteria: $ARGUMENTS"
+    }
+  },
+  "actions": [
+    {
+      "label": "Açık PR'lar",
+      "run": "gh pr list --limit 15",
+      "mode": "insert"
+    },
+    {
+      "label": "Açık issue'lar",
+      "run": "gh issue list --limit 15",
+      "mode": "insert"
+    },
+    {
+      "label": "PR durumu",
+      "run": "gh pr status",
+      "mode": "insert"
+    }
+  ]
+}

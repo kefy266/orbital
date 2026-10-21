@@ -43,6 +43,7 @@ ApplicationWindow {
             clip: true
             Behavior on Layout.preferredWidth { NumberAnimation { duration: Theme.normal; easing.type: Easing.OutCubic } }
             onOpenSettings: page => window.openSettings(page)
+            onOpenStore: storeDialog.openStore()
             onCollapse: window.sidebarOpen = false
         }
 
@@ -250,6 +251,15 @@ ApplicationWindow {
     }
 
     SettingsDialog { id: settings }
+    StoreDialog { id: storeDialog }
+    // Dev aid: installs store items named in ORBITAL_DEV_SETTINGS=store:<id>:<id>…
+    Timer {
+        id: devInstall
+        property var ids: []
+        interval: 1500
+        running: ids.length > 0
+        onTriggered: { ids.forEach(id => App.installStoreItem(id)); ids = [] }
+    }
     PermissionDialog {}
 
     Component.onCompleted: {
@@ -257,6 +267,12 @@ ApplicationWindow {
         const hook = App.devHook()
         if (hook.length) {
             const parts = hook.split(":")
+            if (parts[0] === "store") {
+                storeDialog.openStore()
+                if (parts.length > 1)
+                    devInstall.ids = parts.slice(1)
+                return
+            }
             settings.openAt(parts[0])
             if (parts.length > 2)
                 settings.devConnect(parts[1], parts.slice(2).join(":"))

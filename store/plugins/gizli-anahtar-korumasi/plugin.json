@@ -1,0 +1,8 @@
+{
+  "id": "gizli-anahtar-korumasi",
+  "name": "Gizli Anahtar Koruması",
+  "version": "1.0.0",
+  "author": "Orbital",
+  "description": "beforePrompt hook örneği: mesajında API anahtarı veya özel anahtar varsa gönderimi engeller.",
+  "hooks": { "beforePrompt": "hooks/check.sh" }
+}
