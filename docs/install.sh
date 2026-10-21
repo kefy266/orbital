@@ -23,6 +23,18 @@ ARCH="$(uname -m)"
 if [ "$OS" = "Darwin" ]; then
   printf "${CYAN}→ İşletim Sistemi:${NC} macOS (%s)\n" "$ARCH"
 
+  if command -v brew >/dev/null 2>&1; then
+    printf "${CYAN}→ Homebrew tespit edildi, Cask üzerinden kuruluyor...${NC}\n"
+    if brew install --cask kefy266/orbital/orbital; then
+      printf "${GREEN}✓ Orbital Homebrew ile kuruldu: /Applications/Orbital.app${NC}\n"
+      printf "${BOLD}${CYAN}→ Orbital başlatılıyor...${NC}\n"
+      open /Applications/Orbital.app 2>/dev/null || true
+      printf "\n${BOLD}${GREEN}✦ Orbital hazır! İyi çalışmalar.${NC}\n"
+      exit 0
+    fi
+    printf "${YELLOW}→ Homebrew kurulumu atlandı, doğrudan disk imajı ile devam ediliyor...${NC}\n"
+  fi
+
   DMG_URL="${RELEASE_URL}/Orbital-macos-arm64.dmg"
   TEMP_DIR="$(mktemp -d)"
   TEMP_DMG="${TEMP_DIR}/Orbital.dmg"

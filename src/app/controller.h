@@ -52,6 +52,15 @@ class AppController : public QObject
     Q_PROPERTY(bool storeLoading READ storeLoading NOTIFY storeChanged)
     Q_PROPERTY(QString storeError READ storeError NOTIFY storeChanged)
 
+    Q_PROPERTY(QString appVersion READ appVersion CONSTANT)
+    Q_PROPERTY(bool updateAvailable READ updateAvailable NOTIFY updateChanged)
+    Q_PROPERTY(QString updateVersion READ updateVersion NOTIFY updateChanged)
+    Q_PROPERTY(QString updateNotes READ updateNotes NOTIFY updateChanged)
+    Q_PROPERTY(bool checkingUpdate READ checkingUpdate NOTIFY updateChanged)
+    Q_PROPERTY(bool updating READ updating NOTIFY updateChanged)
+    Q_PROPERTY(qreal updateProgress READ updateProgress NOTIFY updateProgressChanged)
+    Q_PROPERTY(QString updateStatus READ updateStatus NOTIFY updateChanged)
+
 public:
     explicit AppController(QObject *parent = nullptr);
     ~AppController() override;
@@ -140,6 +149,18 @@ public:
     Q_INVOKABLE void installStoreItem(const QString &id);
     Q_INVOKABLE void removeStoreItem(const QString &id);
 
+    // Auto-update
+    QString appVersion() const;
+    bool updateAvailable() const { return m_updateAvailable; }
+    QString updateVersion() const { return m_updateVersion; }
+    QString updateNotes() const { return m_updateNotes; }
+    bool checkingUpdate() const { return m_checkingUpdate; }
+    bool updating() const { return m_updating; }
+    qreal updateProgress() const { return m_updateProgress; }
+    QString updateStatus() const { return m_updateStatus; }
+    Q_INVOKABLE void checkForUpdates(bool silent = false);
+    Q_INVOKABLE void applyUpdate();
+
     // Restarts the engine if settings that it reads at startup changed.
     Q_INVOKABLE void applySettings();
 
@@ -163,6 +184,8 @@ Q_SIGNALS:
     void providerResult(const QString &id, bool ok, const QString &message);
     void storeChanged();
     void storeItemDone(const QString &id, bool ok, const QString &message);
+    void updateChanged();
+    void updateProgressChanged();
     void scrollToEnd();
 
 private:
@@ -212,4 +235,14 @@ private:
     QString storeUrl() const;
     void fetchStoreFile(const QString &path, std::function<void(const QByteArray &, const QString &)> done);
     QMetaObject::Connection m_mcpConnection;
+
+    bool m_updateAvailable = false;
+    QString m_updateVersion;
+    QString m_updateNotes;
+    QString m_updateDownloadUrl;
+    qint64 m_updateAssetSize = 0;
+    bool m_checkingUpdate = false;
+    bool m_updating = false;
+    qreal m_updateProgress = 0.0;
+    QString m_updateStatus;
 };

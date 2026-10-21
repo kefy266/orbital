@@ -216,6 +216,7 @@ Rectangle {
             id: nav
             property string iconName
             property string badge: ""
+            property bool hasDot: false
             Layout.fillWidth: true
             implicitHeight: 36
             hoverEnabled: true
@@ -230,12 +231,18 @@ Rectangle {
                     font.pixelSize: Theme.fontUi
                     color: Theme.text
                 }
+                Rectangle {
+                    visible: nav.hasDot
+                    Layout.rightMargin: 10
+                    width: 7; height: 7; radius: 3.5
+                    color: Theme.accent
+                }
             }
         }
         NavRow { text: "Mağaza"; iconName: "store"; onClicked: root.openStore() }
         NavRow { text: "Skill'ler"; iconName: "sparkle"; onClicked: root.openSettings("skills") }
         NavRow { text: "Eklentiler"; iconName: "blocks"; onClicked: root.openSettings("plugins") }
-        NavRow { text: "Ayarlar"; iconName: "settings"; onClicked: root.openSettings("general") }
+        NavRow { text: "Ayarlar"; iconName: "settings"; hasDot: App.updateAvailable; onClicked: root.openSettings("general") }
     }
 
     ConfirmDialog {

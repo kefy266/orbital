@@ -246,6 +246,59 @@ Popup {
                                 }
                             }
                         }
+                        SectionLabel { text: "GÜNCELLEME" }
+                        Card {
+                            SettingRow {
+                                title: "Orbital v" + App.appVersion
+                                subtitle: App.updateStatus.length > 0 ? App.updateStatus : (App.updateAvailable ? ("Yeni sürüm mevcut: v" + App.updateVersion) : "Orbital güncel.")
+                                divider: App.updating
+                                Row {
+                                    spacing: 8
+                                    OButton {
+                                        visible: !App.updating && !App.updateAvailable
+                                        text: App.checkingUpdate ? "Denetleniyor..." : "Güncellemeleri Denetle"
+                                        iconName: "refresh"
+                                        enabled: !App.checkingUpdate
+                                        onClicked: App.checkForUpdates(false)
+                                    }
+                                    OButton {
+                                        visible: !App.updating && App.updateAvailable
+                                        variant: "primary"
+                                        text: "Şimdi Güncelle (v" + App.updateVersion + ")"
+                                        iconName: "sparkle"
+                                        onClicked: App.applyUpdate()
+                                    }
+                                }
+                            }
+                            Item {
+                                visible: App.updating
+                                Layout.fillWidth: true
+                                implicitHeight: 28
+                                Layout.leftMargin: 16
+                                Layout.rightMargin: 16
+                                Layout.bottomMargin: 12
+                                Rectangle {
+                                    anchors.fill: parent
+                                    radius: Theme.radiusSm
+                                    color: Theme.sidebar
+                                    Rectangle {
+                                        height: parent.height
+                                        width: Math.max(12, parent.width * Math.min(1.0, Math.max(0.0, App.updateProgress)))
+                                        radius: Theme.radiusSm
+                                        color: Theme.accent
+                                        Behavior on width { NumberAnimation { duration: 150 } }
+                                    }
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: App.updateStatus
+                                        font.family: Theme.font
+                                        font.pixelSize: Theme.fontCaption
+                                        font.weight: Font.Medium
+                                        color: Theme.text
+                                    }
+                                }
+                            }
+                        }
                     }
 
                     // ----------------------------------------------------- Providers

@@ -170,7 +170,7 @@
       <span class="quick-dl-label">Doğrudan indir:</span>
       <a href="https://github.com/kefy266/orbital/releases/latest/download/Orbital-windows-x64.zip">Windows (.exe)</a>
       <span class="sep">·</span>
-      <a href="https://github.com/kefy266/orbital/releases/latest/download/Orbital-macos-arm64.dmg">macOS (.app / .dmg)</a>
+      <a href="https://github.com/kefy266/orbital/releases/latest/download/Orbital-macos-arm64.dmg">macOS (.dmg)</a>
       <span class="sep">·</span>
       <a href="https://github.com/kefy266/orbital/releases/latest/download/Orbital-x86_64.AppImage">Linux (.AppImage)</a>
     </div>
@@ -288,9 +288,11 @@
       </div>
       <div class="step">
         <div class="os"><svg viewBox="0 0 24 24"><path d="M16.4 12.6c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.2-2.8.8-3.5.8s-1.8-.8-3-.8C6.9 7.3 5.5 8.2 4.7 9.6c-1.6 2.8-.4 6.9 1.2 9.1.8 1.1 1.7 2.3 2.9 2.3 1.1 0 1.6-.7 3-.7s1.8.7 3 .7c1.2 0 2-1.1 2.8-2.2.9-1.3 1.2-2.5 1.3-2.6-.1 0-2.5-1-2.5-3.6zM14.1 5.8c.6-.8 1.1-1.8 1-2.8-.9 0-2 .6-2.7 1.4-.6.7-1.1 1.7-1 2.7 1 .1 2-.5 2.7-1.3z"/></svg></div>
-        <h3>macOS 12+</h3>
-        <p>Terminal'den tek komutla kur ve doğrudan aç:</p>
-        <pre>curl -fsSL https://raw.githubusercontent.com/kefy266/orbital/main/install.sh | bash</pre>
+        <h3>macOS (Homebrew)</h3>
+        <p>Homebrew ile tek komutla kur ve hemen kullan:</p>
+        <pre>brew install --cask kefy266/orbital/orbital</pre>
+        <p style="margin-top:8px;font-size:13px;color:var(--text-faint)">Veya terminalden curl ile doğrudan aç:</p>
+        <pre style="margin-top:4px">curl -fsSL https://raw.githubusercontent.com/kefy266/orbital/main/install.sh | bash</pre>
         <a class="btn primary dl" href="https://github.com/kefy266/orbital/releases/latest/download/Orbital-macos-arm64.dmg">
           <svg viewBox="0 0 24 24"><path d="M12 4v11M7 10.5 12 15.5l5-5M5 20h14"/></svg>DMG olarak indir (.dmg)</a>
       </div>
@@ -304,7 +306,7 @@
           <svg viewBox="0 0 24 24"><path d="M12 4v11M7 10.5 12 15.5l5-5M5 20h14"/></svg>Linux için indir (.AppImage)</a>
       </div>
     </div>
-    <p class="build-note">Kaynaktan derlemek ya da <code>.tar.gz</code> paketini indirmek mi istiyorsun? Adımlar <a href="https://github.com/kefy266/orbital#kaynaktan-derleme">README</a>'de. Her commit üç platformda otomatik derlenip test edilir.</p>
+    <p class="build-note">Kaynaktan derlemek ya da <code>.tar.gz</code> paketini indirmek mi istiyorsun? Adımlar <a href="https://github.com/kefy266/orbital#kaynaktan-derleme">README</a>'de. Her commit otomatik derlenip test edilir.</p>
   </div>
 </section>
 

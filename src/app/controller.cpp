@@ -22,6 +22,7 @@
 #include <QFile>
 #include <QProcess>
 #include <QRegularExpression>
+#include <QTextStream>
 #include <QUrl>
 #include <memory>
 
@@ -62,6 +63,7 @@ void AppController::start()
 {
     // One engine for everyone: free cloud models plus any provider the user connects.
     switchEngine(QStringLiteral("opencode"));
+    QTimer::singleShot(4000, this, [this] { checkForUpdates(true); });
 }
 
 void AppController::reloadExtensions()
@@ -1181,3 +1183,260 @@ void AppController::applySettings()
     switchEngine(engineId());
     Q_EMIT toast(QStringLiteral("Ayarlar uygulandı"));
 }
+
+QString AppController::appVersion() const
+{
+    const QString ver = QCoreApplication::applicationVersion();
+    return ver.isEmpty() ? QStringLiteral("0.3.0") : ver;
+}
+
+void AppController::checkForUpdates(bool silent)
+{
+    if (m_checkingUpdate || m_updating)
+        return;
+
+    m_checkingUpdate = true;
+    m_updateStatus = QStringLiteral("Güncellemeler denetleniyor...");
+    Q_EMIT updateChanged();
+
+    QNetworkRequest req(QUrl(QStringLiteral("https://api.github.com/repos/kefy266/orbital/releases/latest")));
+    req.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("Orbital-App"));
+    req.setRawHeader("Accept", "application/vnd.github.v3+json");
+
+    QNetworkReply *reply = m_nam->get(req);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, silent]() {
+        reply->deleteLater();
+        m_checkingUpdate = false;
+
+        if (reply->error() != QNetworkReply::NoError) {
+            m_updateStatus = QStringLiteral("Güncelleme denetlenemedi.");
+            Q_EMIT updateChanged();
+            if (!silent)
+                Q_EMIT toast(QStringLiteral("Güncelleme denetlenemedi: %1").arg(reply->errorString()));
+            return;
+        }
+
+        const QByteArray data = reply->readAll();
+        const QJsonDocument doc = QJsonDocument::fromJson(data);
+        if (!doc.isObject()) {
+            m_updateStatus = QStringLiteral("Geçersiz güncelleme yanıtı.");
+            Q_EMIT updateChanged();
+            return;
+        }
+
+        const QJsonObject obj = doc.object();
+        const QString tag = obj.value(QStringLiteral("tag_name")).toString();
+        const QString cleanTag = tag.startsWith(QLatin1Char('v')) ? tag.mid(1) : tag;
+        const QString current = appVersion();
+
+        auto parseVer = [](const QString &v) -> QList<int> {
+            QList<int> parts;
+            const QStringList pieces = v.split(QLatin1Char('.'));
+            for (const QString &p : pieces) {
+                const QString numOnly = p.section(QRegularExpression(QStringLiteral("[^0-9]")), 0, 0);
+                parts.append(numOnly.toInt());
+            }
+            while (parts.size() < 3)
+                parts.append(0);
+            return parts;
+        };
+
+        const QList<int> remote = parseVer(cleanTag);
+        const QList<int> local = parseVer(current);
+
+        bool newer = false;
+        for (int i = 0; i < 3; ++i) {
+            if (remote.at(i) > local.at(i)) {
+                newer = true;
+                break;
+            } else if (remote.at(i) < local.at(i)) {
+                break;
+            }
+        }
+
+        if (newer) {
+            m_updateVersion = cleanTag;
+            m_updateNotes = obj.value(QStringLiteral("body")).toString();
+
+            const QJsonArray assets = obj.value(QStringLiteral("assets")).toArray();
+            m_updateDownloadUrl.clear();
+            m_updateAssetSize = 0;
+
+            for (const QJsonValue &v : assets) {
+                const QJsonObject a = v.toObject();
+                const QString name = a.value(QStringLiteral("name")).toString();
+#if defined(Q_OS_WIN)
+                if (name.endsWith(QStringLiteral("-windows-x64.zip"), Qt::CaseInsensitive) ||
+                    name.endsWith(QStringLiteral(".zip"), Qt::CaseInsensitive)) {
+                    m_updateDownloadUrl = a.value(QStringLiteral("browser_download_url")).toString();
+                    m_updateAssetSize = a.value(QStringLiteral("size")).toInteger();
+                    break;
+                }
+#elif defined(Q_OS_MACOS)
+                if (name.endsWith(QStringLiteral(".dmg"), Qt::CaseInsensitive)) {
+                    m_updateDownloadUrl = a.value(QStringLiteral("browser_download_url")).toString();
+                    m_updateAssetSize = a.value(QStringLiteral("size")).toInteger();
+                    break;
+                }
+#else
+                if (name.endsWith(QStringLiteral(".AppImage"), Qt::CaseInsensitive)) {
+                    m_updateDownloadUrl = a.value(QStringLiteral("browser_download_url")).toString();
+                    m_updateAssetSize = a.value(QStringLiteral("size")).toInteger();
+                    break;
+                }
+#endif
+            }
+
+            if (!m_updateDownloadUrl.isEmpty()) {
+                m_updateAvailable = true;
+                m_updateStatus = QStringLiteral("Yeni sürüm mevcut: v%1").arg(m_updateVersion);
+                Q_EMIT updateChanged();
+                Q_EMIT toast(QStringLiteral("Yeni Orbital sürümü mevcut: v%1").arg(m_updateVersion));
+            } else {
+                m_updateAvailable = false;
+                m_updateStatus = QStringLiteral("Platformunuz için uygun indirme paketi bulunamadı.");
+                Q_EMIT updateChanged();
+            }
+        } else {
+            m_updateAvailable = false;
+            m_updateStatus = QStringLiteral("Orbital güncel (v%1).").arg(current);
+            Q_EMIT updateChanged();
+            if (!silent)
+                Q_EMIT toast(QStringLiteral("Orbital en güncel sürümde (v%1).").arg(current));
+        }
+    });
+}
+
+void AppController::applyUpdate()
+{
+    if (m_updating || m_updateDownloadUrl.isEmpty())
+        return;
+
+    m_updating = true;
+    m_updateProgress = 0.0;
+    const double mb = static_cast<double>(m_updateAssetSize) / (1024.0 * 1024.0);
+    m_updateStatus = mb > 0.0 ? QStringLiteral("İndiriliyor (%1 MB)...").arg(QString::number(mb, 'f', 1))
+                              : QStringLiteral("İndiriliyor...");
+    Q_EMIT updateChanged();
+    Q_EMIT updateProgressChanged();
+
+#if defined(Q_OS_WIN)
+    const QString destFile = QDir::tempPath() + QDir::separator() + QStringLiteral("Orbital-update.zip");
+#elif defined(Q_OS_MACOS)
+    const QString destFile = QDir::tempPath() + QDir::separator() + QStringLiteral("Orbital-update.dmg");
+#else
+    const QString appImagePath = qEnvironmentVariable("APPIMAGE");
+    const QString destFile = (!appImagePath.isEmpty())
+                                 ? (appImagePath + QStringLiteral(".update"))
+                                 : (QDir::tempPath() + QDir::separator() + QStringLiteral("Orbital-x86_64.AppImage"));
+#endif
+
+    QFile *file = new QFile(destFile, this);
+    if (!file->open(QIODevice::WriteOnly)) {
+        m_updating = false;
+        m_updateStatus = QStringLiteral("Dosya yazılamadı: %1").arg(file->errorString());
+        Q_EMIT updateChanged();
+        Q_EMIT toast(m_updateStatus);
+        delete file;
+        return;
+    }
+
+    QNetworkRequest req;
+    req.setUrl(QUrl(m_updateDownloadUrl));
+    req.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("Orbital-App"));
+    req.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
+
+    QNetworkReply *reply = m_nam->get(req);
+    connect(reply, &QNetworkReply::downloadProgress, this, [this](qint64 received, qint64 total) {
+        if (total > 0) {
+            m_updateProgress = static_cast<qreal>(received) / static_cast<qreal>(total);
+            m_updateStatus = QStringLiteral("İndiriliyor: %%%1").arg(qRound(m_updateProgress * 100));
+            Q_EMIT updateProgressChanged();
+            Q_EMIT updateChanged();
+        }
+    });
+
+    connect(reply, &QNetworkReply::readyRead, file, [reply, file]() {
+        file->write(reply->readAll());
+    });
+
+    connect(reply, &QNetworkReply::finished, this, [this, reply, file, destFile]() {
+        reply->deleteLater();
+        file->flush();
+        file->close();
+        file->deleteLater();
+
+        if (reply->error() != QNetworkReply::NoError) {
+            QFile::remove(destFile);
+            m_updating = false;
+            m_updateStatus = QStringLiteral("İndirme başarısız: %1").arg(reply->errorString());
+            Q_EMIT updateChanged();
+            Q_EMIT toast(m_updateStatus);
+            return;
+        }
+
+        m_updateStatus = QStringLiteral("Güncelleme uygulanıyor, yeniden başlatılıyor...");
+        Q_EMIT updateChanged();
+
+#if defined(Q_OS_WIN)
+        const QString appDir = QCoreApplication::applicationDirPath();
+        const QString appExe = QCoreApplication::applicationFilePath();
+        const QString batPath = QDir::tempPath() + QDir::separator() + QStringLiteral("orbital_update.bat");
+        QFile bat(batPath);
+        if (bat.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            QTextStream out(&bat);
+            out << "@echo off\r\n";
+            out << "timeout /t 2 /nobreak >nul\r\n";
+            out << "tar -xf \"" << QDir::toNativeSeparators(destFile) << "\" -C \"" << QDir::toNativeSeparators(appDir) << "\"\r\n";
+            out << "start \"\" \"" << QDir::toNativeSeparators(appExe) << "\"\r\n";
+            out << "del \"" << QDir::toNativeSeparators(destFile) << "\"\r\n";
+            out << "(goto) 2>nul & del \"%~f0\"\r\n";
+            bat.close();
+
+            QProcess::startDetached(QStringLiteral("cmd.exe"), QStringList() << QStringLiteral("/c") << batPath);
+            QCoreApplication::quit();
+            return;
+        } else {
+            m_updating = false;
+            m_updateStatus = QStringLiteral("Güncelleme betiği oluşturulamadı.");
+            Q_EMIT updateChanged();
+            Q_EMIT toast(m_updateStatus);
+        }
+#elif defined(Q_OS_MACOS)
+        const QString script = QStringLiteral(
+            "MOUNT_DIR=$(mktemp -d); "
+            "hdiutil attach \"%1\" -mountpoint \"$MOUNT_DIR\" -nobrowse -quiet; "
+            "sleep 2; "
+            "rm -rf /Applications/Orbital.app; "
+            "cp -R \"$MOUNT_DIR/Orbital.app\" /Applications/; "
+            "hdiutil detach \"$MOUNT_DIR\" -quiet; "
+            "xattr -cr /Applications/Orbital.app; "
+            "rm -f \"%1\"; "
+            "open /Applications/Orbital.app"
+        ).arg(destFile);
+        QProcess::startDetached(QStringLiteral("bash"), QStringList() << QStringLiteral("-c") << script);
+        QCoreApplication::quit();
+#else
+        const QString appImagePath = qEnvironmentVariable("APPIMAGE");
+        QFile::setPermissions(destFile, QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner |
+                                            QFileDevice::ReadGroup | QFileDevice::ExeGroup |
+                                            QFileDevice::ReadOther | QFileDevice::ExeOther);
+
+        if (!appImagePath.isEmpty()) {
+            QFile::remove(appImagePath);
+            if (!QFile::rename(destFile, appImagePath)) {
+                QFile::copy(destFile, appImagePath);
+                QFile::remove(destFile);
+            }
+            QProcess::startDetached(appImagePath, QStringList());
+            QCoreApplication::quit();
+            return;
+        } else {
+            QProcess::startDetached(destFile, QStringList());
+            QCoreApplication::quit();
+            return;
+        }
+#endif
+    });
+}
+

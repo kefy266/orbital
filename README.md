@@ -13,12 +13,27 @@
 - **Eklentiler:** tek bir `plugin.json` ile slash komutları, MCP araç sunucuları, betik araçları, paketlenmiş skill'ler, sistem talimatları, eylemler ve prompt hook'ları.
 - **Mağaza:** skill ve eklentileri uygulamanın içinden tek tıkla yükle/kaldır. Katalog bu depodaki `store/` klasöründedir.
 - **Arayüz:** gruplu sohbet geçmişi, akan markdown, KDE renklendirmeli kod blokları, açılır araç kartları, Build/Plan modları.
+- **Otomatik güncelleme:** Linux (AppImage) ve Windows'ta yeni sürümler uygulama içinden tek tıkla denetlenir ve güncellenir.
 
 ## Kurulum
 
+### macOS (Homebrew)
+
+Homebrew ile tek komutla kurabilirsiniz (Gatekeeper sorunu olmadan doğrudan `/Applications` klasörüne eklenir):
+
+```bash
+brew install --cask kefy266/orbital/orbital
+```
+
+Kaynaktan doğrudan derlemek için:
+
+```bash
+brew install kefy266/orbital/orbital
+```
+
 ### Tek komutla kur ve aç (macOS & Linux)
 
-macOS Gatekeeper uyarısıyla uğraşmadan tek satırda `/Applications` klasörüne kurar ve doğrudan açar:
+macOS ve Linux'ta tek satırda indirir ve doğrudan açar:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/kefy266/orbital/main/install.sh | bash
@@ -30,9 +45,9 @@ Hazır paketler [Sürümler](https://github.com/kefy266/orbital/releases/latest)
 
 | Sistem | Paket | Not |
 |---|---|---|
-| Windows 10/11 (x64) | [`Orbital-windows-x64.zip`](https://github.com/kefy266/orbital/releases/latest/download/Orbital-windows-x64.zip) | Zip'i aç, `Orbital.exe`'yi çalıştır. SmartScreen uyarısında **Ek bilgi → Yine de çalıştır**. |
-| macOS 12+ (Apple Silicon) | [`Orbital-macos-arm64.dmg`](https://github.com/kefy266/orbital/releases/latest/download/Orbital-macos-arm64.dmg) | Ya da yukarıdaki `curl` komutuyla doğrudan kur. |
-| Linux (x86_64) | [`Orbital-x86_64.AppImage`](https://github.com/kefy266/orbital/releases/latest/download/Orbital-x86_64.AppImage) · [`.tar.gz`](https://github.com/kefy266/orbital/releases/latest/download/orbital-linux-x86_64.tar.gz) | AppImage kurulum gerektirmez (`chmod +x` verip çalıştır). `.tar.gz` için sistemde Qt 6 kurulu olmalı. |
+| Windows 10/11 (x64) | [`Orbital-windows-x64.zip`](https://github.com/kefy266/orbital/releases/latest/download/Orbital-windows-x64.zip) | Zip'i aç, `Orbital.exe`'yi çalıştır. SmartScreen uyarısında **Ek bilgi → Yine de çalıştır**. Dahili otomatik güncelleme. |
+| macOS 12+ (Apple Silicon) | [`Orbital-macos-arm64.dmg`](https://github.com/kefy266/orbital/releases/latest/download/Orbital-macos-arm64.dmg) | Homebrew (`--cask`) ya da DMG ile kurulum. |
+| Linux (x86_64) | [`Orbital-x86_64.AppImage`](https://github.com/kefy266/orbital/releases/latest/download/Orbital-x86_64.AppImage) · [`.tar.gz`](https://github.com/kefy266/orbital/releases/latest/download/orbital-linux-x86_64.tar.gz) | AppImage kurulum gerektirmez (`chmod +x` verip çalıştır). Dahili otomatik güncelleme. |
 
 İlk açılışta Orbital bulut modellerini hazırlamak için motorunu bir kez indirir (yaklaşık 60–180 MB).
 

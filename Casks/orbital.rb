@@ -1,0 +1,24 @@
+cask "orbital" do
+  version "0.3.0"
+  sha256 "b2c213076146a887d849aeb44a79a4d271ed496682f8a01fa6c2846112033b82"
+
+  url "https://github.com/kefy266/orbital/releases/download/v#{version}/Orbital-macos-arm64.dmg"
+  name "Orbital"
+  desc "Skill ve eklenti destekli, sade ve güçlü masaüstü AI kod asistanı"
+  homepage "https://kefy266.github.io/orbital"
+
+  depends_on macos: ">= :monterey"
+
+  app "Orbital.app"
+
+  postflight do
+    system_command "xattr",
+                   args: ["-cr", "#{appdir}/Orbital.app"],
+                   sudo: false
+  end
+
+  zap trash: [
+    "~/.config/orbital",
+    "~/.local/share/orbital",
+  ]
+end

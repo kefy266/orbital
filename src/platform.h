@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QDir>
 #include <QFileInfo>
 #include <QString>
 #include <QStringList>
