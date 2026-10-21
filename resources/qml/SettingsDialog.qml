@@ -262,13 +262,6 @@ Popup {
                                         onClicked: App.checkForUpdates(false)
                                     }
                                     OButton {
-                                        visible: !App.updating && !App.updateAvailable && App.canReinstall
-                                        text: "Yeniden Kur / İndir"
-                                        variant: "ghost"
-                                        iconName: "download"
-                                        onClicked: App.applyUpdate()
-                                    }
-                                    OButton {
                                         visible: !App.updating && App.updateAvailable
                                         variant: "primary"
                                         text: "Şimdi Güncelle (v" + App.updateVersion + ")"

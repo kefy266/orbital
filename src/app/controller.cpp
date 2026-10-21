@@ -1476,7 +1476,7 @@ void AppController::applySettings()
 QString AppController::appVersion() const
 {
     const QString ver = QCoreApplication::applicationVersion();
-    return ver.isEmpty() ? QStringLiteral("0.3.3") : ver;
+    return ver.isEmpty() ? QStringLiteral("0.3.4") : ver;
 }
 
 void AppController::checkForUpdates(bool silent)
@@ -1488,35 +1488,13 @@ void AppController::checkForUpdates(bool silent)
     m_updateStatus = QStringLiteral("Güncellemeler denetleniyor...");
     Q_EMIT updateChanged();
 
-    QNetworkRequest req(QUrl(QStringLiteral("https://api.github.com/repos/kefy266/orbital/releases/latest")));
-    req.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("Orbital-App"));
-    req.setRawHeader("Accept", "application/vnd.github.v3+json");
-
-    QNetworkReply *reply = m_nam->get(req);
-    connect(reply, &QNetworkReply::finished, this, [this, reply, silent]() {
-        reply->deleteLater();
-        m_checkingUpdate = false;
-
-        if (reply->error() != QNetworkReply::NoError) {
-            m_updateStatus = QStringLiteral("Güncelleme denetlenemedi.");
-            Q_EMIT updateChanged();
-            if (!silent)
-                Q_EMIT toast(QStringLiteral("Güncelleme denetlenemedi: %1").arg(reply->errorString()));
-            return;
-        }
-
-        const QByteArray data = reply->readAll();
-        const QJsonDocument doc = QJsonDocument::fromJson(data);
-        if (!doc.isObject()) {
-            m_updateStatus = QStringLiteral("Geçersiz güncelleme yanıtı.");
-            Q_EMIT updateChanged();
-            return;
-        }
-
-        const QJsonObject obj = doc.object();
-        const QString tag = obj.value(QStringLiteral("tag_name")).toString();
-        const QString cleanTag = tag.startsWith(QLatin1Char('v')) ? tag.mid(1) : tag;
+    auto processPayload = [this, silent](const QJsonObject &obj) -> bool {
+        const QString tag = obj.value(QStringLiteral("tag_name")).toString().trimmed();
+        const QString cleanTag = tag.startsWith(QLatin1Char('v')) ? tag.mid(1) : (tag.isEmpty() ? obj.value(QStringLiteral("version")).toString() : tag);
         const QString current = appVersion();
+
+        if (cleanTag.isEmpty())
+            return false;
 
         auto parseVer = [](const QString &v) -> QList<int> {
             QList<int> parts;
@@ -1545,37 +1523,36 @@ void AppController::checkForUpdates(bool silent)
 
         m_updateVersion = cleanTag;
         m_updateNotes = obj.value(QStringLiteral("body")).toString();
-
-        const QJsonArray assets = obj.value(QStringLiteral("assets")).toArray();
         m_updateDownloadUrl.clear();
         m_updateAssetSize = 0;
 
-        for (const QJsonValue &v : assets) {
-            const QJsonObject a = v.toObject();
-            const QString name = a.value(QStringLiteral("name")).toString();
-#if defined(Q_OS_WIN)
-            if (name.endsWith(QStringLiteral("-windows-x64.zip"), Qt::CaseInsensitive) ||
-                name.endsWith(QStringLiteral(".zip"), Qt::CaseInsensitive)) {
-                m_updateDownloadUrl = a.value(QStringLiteral("browser_download_url")).toString();
-                m_updateAssetSize = a.value(QStringLiteral("size")).toInteger();
-                break;
-            }
-#elif defined(Q_OS_MACOS)
-            if (name.endsWith(QStringLiteral(".dmg"), Qt::CaseInsensitive)) {
-                m_updateDownloadUrl = a.value(QStringLiteral("browser_download_url")).toString();
-                m_updateAssetSize = a.value(QStringLiteral("size")).toInteger();
-                break;
-            }
-#else
-            if (name.endsWith(QStringLiteral(".AppImage"), Qt::CaseInsensitive)) {
-                m_updateDownloadUrl = a.value(QStringLiteral("browser_download_url")).toString();
-                m_updateAssetSize = a.value(QStringLiteral("size")).toInteger();
-                break;
-            }
-#endif
-        }
-
         if (newer) {
+            const QJsonArray assets = obj.value(QStringLiteral("assets")).toArray();
+            for (const QJsonValue &v : assets) {
+                const QJsonObject a = v.toObject();
+                const QString name = a.value(QStringLiteral("name")).toString();
+#if defined(Q_OS_WIN)
+                if (name.endsWith(QStringLiteral("-windows-x64.zip"), Qt::CaseInsensitive) ||
+                    name.endsWith(QStringLiteral(".zip"), Qt::CaseInsensitive)) {
+                    m_updateDownloadUrl = a.value(QStringLiteral("browser_download_url")).toString();
+                    m_updateAssetSize = a.value(QStringLiteral("size")).toInteger();
+                    break;
+                }
+#elif defined(Q_OS_MACOS)
+                if (name.endsWith(QStringLiteral(".dmg"), Qt::CaseInsensitive)) {
+                    m_updateDownloadUrl = a.value(QStringLiteral("browser_download_url")).toString();
+                    m_updateAssetSize = a.value(QStringLiteral("size")).toInteger();
+                    break;
+                }
+#else
+                if (name.endsWith(QStringLiteral(".AppImage"), Qt::CaseInsensitive)) {
+                    m_updateDownloadUrl = a.value(QStringLiteral("browser_download_url")).toString();
+                    m_updateAssetSize = a.value(QStringLiteral("size")).toInteger();
+                    break;
+                }
+#endif
+            }
+
             if (!m_updateDownloadUrl.isEmpty()) {
                 m_updateAvailable = true;
                 m_updateStatus = QStringLiteral("Yeni sürüm mevcut: v%1").arg(m_updateVersion);
@@ -1583,16 +1560,61 @@ void AppController::checkForUpdates(bool silent)
                 Q_EMIT toast(QStringLiteral("Yeni Orbital sürümü mevcut: v%1").arg(m_updateVersion));
             } else {
                 m_updateAvailable = false;
-                m_updateStatus = QStringLiteral("Platformunuz için uygun indirme paketi bulunamadı.");
+                m_updateStatus = QStringLiteral("Platformunuz için indirme paketi bulunamadı.");
                 Q_EMIT updateChanged();
             }
         } else {
+            // Strictly prevent downgrade: clear any download URL and mark as current
             m_updateAvailable = false;
+            m_updateDownloadUrl.clear();
             m_updateStatus = QStringLiteral("Orbital güncel (v%1).").arg(current);
             Q_EMIT updateChanged();
             if (!silent)
                 Q_EMIT toast(QStringLiteral("Orbital en güncel sürümde (v%1).").arg(current));
         }
+        return true;
+    };
+
+    // First attempt: GitHub REST API
+    QNetworkRequest req(QUrl(QStringLiteral("https://api.github.com/repos/kefy266/orbital/releases/latest")));
+    req.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("Orbital-App"));
+    req.setRawHeader("Accept", "application/vnd.github.v3+json");
+
+    QNetworkReply *reply = m_nam->get(req);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, silent, processPayload]() {
+        reply->deleteLater();
+
+        bool ok = false;
+        if (reply->error() == QNetworkReply::NoError) {
+            const QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
+            if (doc.isObject())
+                ok = processPayload(doc.object());
+        }
+
+        if (ok) {
+            m_checkingUpdate = false;
+            return;
+        }
+
+        // Fallback attempt: raw.githubusercontent.com/version.json (never rate-limited)
+        QNetworkRequest fallbackReq(QUrl(QStringLiteral("https://raw.githubusercontent.com/kefy266/orbital/main/version.json")));
+        fallbackReq.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("Orbital-App"));
+        QNetworkReply *fallbackReply = m_nam->get(fallbackReq);
+        connect(fallbackReply, &QNetworkReply::finished, this, [this, fallbackReply, silent, processPayload]() {
+            fallbackReply->deleteLater();
+            m_checkingUpdate = false;
+
+            if (fallbackReply->error() == QNetworkReply::NoError) {
+                const QJsonDocument doc = QJsonDocument::fromJson(fallbackReply->readAll());
+                if (doc.isObject() && processPayload(doc.object()))
+                    return;
+            }
+
+            m_updateStatus = QStringLiteral("Güncelleme denetlenemedi.");
+            Q_EMIT updateChanged();
+            if (!silent)
+                Q_EMIT toast(QStringLiteral("Güncelleme sunucusuna ulaşılamadı."));
+        });
     });
 }
 
@@ -1736,6 +1758,9 @@ void AppController::applyUpdate()
                 QFile::copy(destFile, appImagePath);
                 QFile::remove(destFile);
             }
+            QFile::setPermissions(appImagePath, QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner |
+                                                QFileDevice::ReadGroup | QFileDevice::ExeGroup |
+                                                QFileDevice::ReadOther | QFileDevice::ExeOther);
             QProcess::startDetached(appImagePath, QStringList());
             QCoreApplication::quit();
             return;
