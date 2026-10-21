@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
-import org.kde.syntaxhighlighting
 import Orbital
 
 // Fenced code: header with language + copy, highlighted body (KSyntaxHighlighting).
@@ -106,9 +105,28 @@ Rectangle {
         }
     }
 
-    SyntaxHighlighter {
-        textEdit: edit
-        definition: block.aliases[block.lang.toLowerCase()] || block.lang || "None"
-        theme: Repository.defaultTheme(Theme.dark ? Repository.DarkTheme : Repository.LightTheme)
+    // KSyntaxHighlighting is optional (KDE ships it on Linux; Windows/macOS
+    // builds may not have it): create the highlighter only if the module loads.
+    property var highlighter: null
+    function updateHighlighter() {
+        if (highlighter)
+            highlighter.destroy()
+        highlighter = null
+        try {
+            highlighter = Qt.createQmlObject(
+                'import org.kde.syntaxhighlighting\n'
+                + 'SyntaxHighlighter { theme: Repository.defaultTheme('
+                + (Theme.dark ? 'Repository.DarkTheme' : 'Repository.LightTheme') + ') }',
+                block, "CodeBlockHighlighter")
+            highlighter.definition = block.aliases[block.lang.toLowerCase()] || block.lang || "None"
+            highlighter.textEdit = edit
+        } catch (e) {
+            highlighter = null // plain monospace text
+        }
+    }
+    Component.onCompleted: updateHighlighter()
+    Connections {
+        target: Theme
+        function onDarkChanged() { block.updateHighlighter() }
     }
 }

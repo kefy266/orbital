@@ -15,6 +15,8 @@
 #include <QSysInfo>
 #include <QTcpServer>
 #include <QTimer>
+#include <algorithm>
+#include <memory>
 
 #ifdef Q_OS_LINUX
 #include <csignal>

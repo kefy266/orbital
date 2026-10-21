@@ -1,6 +1,7 @@
 #include "llm.h"
 
 #include <QJsonDocument>
+#include <QDateTime>
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QRegularExpression>

@@ -4,6 +4,7 @@
 #include "../nativeengine.h"
 #include "../opencodeengine.h"
 #include "../paths.h"
+#include "../platform.h"
 #include "../pluginmanager.h"
 #include "../skillmanager.h"
 #include "../tools.h"
@@ -22,6 +23,7 @@
 #include <QProcess>
 #include <QRegularExpression>
 #include <QUrl>
+#include <memory>
 
 static QString prettyModelName(QString name, bool *free);
 
@@ -619,7 +621,8 @@ void AppController::runAction(int index)
         const QString out = QString::fromUtf8(proc->readAll()).trimmed();
         submit(QStringLiteral("```\n$ %1\n%2\n```").arg(action.run, out.left(20000)));
     });
-    proc->start(QStringLiteral("/bin/bash"), {QStringLiteral("-c"), action.run});
+    const Platform::Command sh = Platform::shell(action.run);
+    proc->start(sh.program, sh.arguments);
 }
 
 void AppController::copyText(const QString &text)

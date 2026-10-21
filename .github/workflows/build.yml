@@ -15,6 +15,9 @@ concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  QT_VERSION: "6.10.*"
+
 jobs:
   linux:
     name: Linux (Qt 6)
@@ -51,13 +54,13 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
           QT_QUICK_BACKEND: software
-          ORBITAL_SCREENSHOT: ${{ github.workspace }}/smoke.png
+          ORBITAL_SCREENSHOT: ${{ github.workspace }}/smoke-linux.png
           ORBITAL_SCREENSHOT_DELAY: "4000"
           XDG_CONFIG_HOME: ${{ runner.temp }}/cfg
           XDG_DATA_HOME: ${{ runner.temp }}/data
         run: |
           timeout 60 ./build/orbital
-          test -s smoke.png
+          test -s smoke-linux.png
 
       - name: Package
         run: |
@@ -67,14 +70,112 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: orbital-linux-x86_64
+          name: linux
           path: |
             orbital-linux-x86_64.tar.gz
-            smoke.png
+            smoke-linux.png
 
-      - name: Release
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
+  windows:
+    name: Windows (MSVC)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ilammy/msvc-dev-cmd@v1
+
+      - uses: jurplel/install-qt-action@v4
         with:
-          files: orbital-linux-x86_64.tar.gz
+          version: ${{ env.QT_VERSION }}
+          arch: win64_msvc2022_64
+          cache: true
+
+      - name: Build Orbital
+        shell: cmd
+        run: |
+          qmake CONFIG+=release orbital.pro -o build.mk
+          nmake /nologo /f build.mk
+
+      - name: Smoke test (UI loads offscreen)
+        shell: pwsh
+        timeout-minutes: 3
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
+          ORBITAL_SCREENSHOT: ${{ github.workspace }}\smoke-windows.png
+          ORBITAL_SCREENSHOT_DELAY: "4000"
+        run: |
+          $p = Start-Process -FilePath build\Orbital.exe -PassThru -Wait -NoNewWindow
+          if ($p.ExitCode -ne 0) { Write-Error "Orbital exited with $($p.ExitCode)"; exit 1 }
+          if (-not (Test-Path smoke-windows.png)) { Write-Error "no screenshot"; exit 1 }
+
+      - name: Package (bundle Qt)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist\Orbital | Out-Null
+          Copy-Item build\Orbital.exe, README.md dist\Orbital\
+          windeployqt --release --compiler-runtime --no-translations --qmldir resources\qml dist\Orbital\Orbital.exe
+          Compress-Archive -Path dist\Orbital -DestinationPath Orbital-windows-x64.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: |
+            Orbital-windows-x64.zip
+            smoke-windows.png
+
+  macos:
+    name: macOS (Apple Silicon)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          cache: true
+
+      - name: Build Orbital
+        run: |
+          qmake CONFIG+=release orbital.pro -o build.mk
+          make -f build.mk -j"$(sysctl -n hw.ncpu)"
+
+      - name: Smoke test (UI loads offscreen)
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
+          ORBITAL_SCREENSHOT: ${{ github.workspace }}/smoke-macos.png
+          ORBITAL_SCREENSHOT_DELAY: "4000"
+        run: |
+          perl -e 'alarm 60; exec @ARGV' build/Orbital.app/Contents/MacOS/Orbital
+          test -s smoke-macos.png
+
+      - name: Package (bundle Qt)
+        run: |
+          macdeployqt build/Orbital.app -qmldir=resources/qml
+          codesign --force --deep --sign - build/Orbital.app
+          hdiutil create -volname Orbital -srcfolder build/Orbital.app -ov -format UDZO Orbital-macos-arm64.dmg
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: |
+            Orbital-macos-arm64.dmg
+            smoke-macos.png
+
+  release:
+    name: Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [linux, windows, macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - uses: softprops/action-gh-release@v2
+        with:
           generate_release_notes: true
+          files: |
+            artifacts/linux/orbital-linux-x86_64.tar.gz
+            artifacts/windows/Orbital-windows-x64.zip
+            artifacts/macos/Orbital-macos-arm64.dmg

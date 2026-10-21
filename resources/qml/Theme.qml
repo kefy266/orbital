@@ -39,9 +39,18 @@ QtObject {
     readonly property color success:     dark ? "#7fd1a0" : "#2f8a57"
 
     // Type — Inter for UI, Hack for code; modular scale (major second, base 16)
-    readonly property string font: Qt.fontFamilies().indexOf("Inter") >= 0 ? "Inter" : Qt.application.font.family
-    readonly property string mono: Qt.fontFamilies().indexOf("JetBrains Mono") >= 0 ? "JetBrains Mono"
-                                 : Qt.fontFamilies().indexOf("Hack") >= 0 ? "Hack" : "monospace"
+    // First installed family wins; falls back to the platform UI / fixed font.
+    function firstFamily(candidates, fallback) {
+        const installed = Qt.fontFamilies()
+        for (const f of candidates)
+            if (installed.indexOf(f) >= 0)
+                return f
+        return fallback
+    }
+    readonly property string font: firstFamily(["Inter", "Segoe UI Variable Text", "Segoe UI", ".AppleSystemUIFont",
+                                                "SF Pro Text", "Noto Sans", "Cantarell"], Qt.application.font.family)
+    readonly property string mono: firstFamily(["JetBrains Mono", "Cascadia Code", "Cascadia Mono", "SF Mono", "Menlo",
+                                                "Hack", "Consolas", "DejaVu Sans Mono", "Noto Sans Mono"], "monospace")
     readonly property int fontCaption: 12
     readonly property int fontSmall:   13
     readonly property int fontUi:      14

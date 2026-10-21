@@ -1,6 +1,7 @@
 #include "tools.h"
 
 #include "mcpclient.h"
+#include "platform.h"
 #include "pluginmanager.h"
 #include "skillmanager.h"
 
@@ -11,6 +12,7 @@
 #include <QProcess>
 #include <QRegularExpression>
 #include <QTimer>
+#include <memory>
 
 static const int kMaxOutput = 30000;
 
@@ -375,13 +377,15 @@ void ToolRegistry::execute(const QString &name, const QJsonObject &args, const Q
     }
     if (name == QLatin1String("bash")) {
         const int timeout = qBound(1, args.value(QStringLiteral("timeout")).toInt(120), 1800) * 1000;
-        return runProcess(QStringLiteral("/bin/bash"), {QStringLiteral("-c"), str("command")}, directory, QByteArray(), timeout, done);
+        const Platform::Command sh = Platform::shell(str("command"));
+        return runProcess(sh.program, sh.arguments, directory, QByteArray(), timeout, done);
     }
     for (const ScriptTool &s : std::as_const(m_scripts)) {
         if (s.def.value(QStringLiteral("name")).toString() != name)
             continue;
         const QString run = QDir(s.pluginDir).absoluteFilePath(s.def.value(QStringLiteral("run")).toString());
-        return runProcess(run, {}, directory, QJsonDocument(args).toJson(QJsonDocument::Compact),
+        const Platform::Command script = Platform::script(run);
+        return runProcess(script.program, script.arguments, directory, QJsonDocument(args).toJson(QJsonDocument::Compact),
                           s.def.value(QStringLiteral("timeout")).toInt(120) * 1000, done,
                           {{QStringLiteral("ORBITAL_PLUGIN_DIR"), s.pluginDir}, {QStringLiteral("ORBITAL_PROJECT_DIR"), directory}});
     }

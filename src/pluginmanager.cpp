@@ -1,6 +1,7 @@
 #include "pluginmanager.h"
 
 #include "paths.h"
+#include "platform.h"
 #include "skillmanager.h"
 
 #include <QDir>
@@ -307,7 +308,8 @@ bool PluginManager::runBeforePrompt(QString *text, const QString &sessionId, con
         QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
         env.insert(QStringLiteral("ORBITAL_PLUGIN_DIR"), p.dir);
         proc.setProcessEnvironment(env);
-        proc.start(QDir(p.dir).absoluteFilePath(hook), {});
+        const Platform::Command script = Platform::script(QDir(p.dir).absoluteFilePath(hook));
+        proc.start(script.program, script.arguments);
         if (!proc.waitForStarted(3000)) {
             *reason = tr("%1 hook'u başlatılamadı: %2").arg(p.name, hook);
             return false;

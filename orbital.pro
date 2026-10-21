@@ -26,6 +26,7 @@ SOURCES += \
     src/app/main.cpp
 
 HEADERS += \
+    src/platform.h \
     src/paths.h \
     src/config.h \
     src/engine.h \
@@ -41,3 +42,17 @@ HEADERS += \
     src/app/iconprovider.h
 
 RESOURCES += resources/orbital.qrc
+
+# Windows / macOS
+win32-msvc*: QMAKE_CXXFLAGS += /utf-8 /permissive-
+win32 {
+    TARGET = Orbital
+    QMAKE_TARGET_DESCRIPTION = Orbital
+    QMAKE_TARGET_PRODUCT = Orbital
+    VERSION = 0.3.0
+}
+macx {
+    TARGET = Orbital
+    QMAKE_TARGET_BUNDLE_PREFIX = io.github.kefy266
+    QMAKE_MACOSX_DEPLOYMENT_TARGET = 12.0
+}

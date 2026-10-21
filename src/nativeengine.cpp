@@ -15,6 +15,8 @@
 #include <QRegularExpression>
 #include <QSysInfo>
 #include <QUuid>
+#include <algorithm>
+#include <memory>
 
 NativeEngine::NativeEngine(SkillManager *skills, PluginManager *plugins, QObject *parent)
     : Engine(parent)
