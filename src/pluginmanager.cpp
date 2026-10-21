@@ -311,8 +311,8 @@ bool PluginManager::runBeforePrompt(QString *text, const QString &sessionId, con
         const Platform::Command script = Platform::script(QDir(p.dir).absoluteFilePath(hook));
         proc.start(script.program, script.arguments);
         if (!proc.waitForStarted(3000)) {
-            *reason = tr("%1 hook'u başlatılamadı: %2").arg(p.name, hook);
-            return false;
+            qWarning("Plugin %s hook couldn't be started: %s", qPrintable(p.name), qPrintable(hook));
+            continue;
         }
         const QJsonObject input{{QStringLiteral("text"), *text},
                                 {QStringLiteral("sessionID"), sessionId},

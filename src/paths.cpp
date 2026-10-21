@@ -61,11 +61,12 @@ static void copyTree(const QString &from, const QString &to)
 
 void installBundledContent()
 {
+    copyTree(QStringLiteral(":/bundled/skills"), skillsDir());
+    copyTree(QStringLiteral(":/bundled/plugins"), pluginsDir());
+
     QJsonObject settings = loadSettings();
     if (settings.value(QStringLiteral("bundledInstalled")).toBool())
         return;
-    copyTree(QStringLiteral(":/bundled/skills"), skillsDir());
-    copyTree(QStringLiteral(":/bundled/plugins"), pluginsDir());
     // Plugins that need extra setup ship disabled ("enabledByDefault": false).
     QJsonArray disabled = settings.value(QStringLiteral("disabledPlugins")).toArray();
     const QDir bundled(QStringLiteral(":/bundled/plugins"));

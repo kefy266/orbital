@@ -33,8 +33,10 @@
     <file alias="bundled/plugins/git-araclari/skills/git-akisi/SKILL.md">plugins/git-araclari/skills/git-akisi/SKILL.md</file>
     <file alias="bundled/plugins/sistem-araclari/plugin.json">plugins/sistem-araclari/plugin.json</file>
     <file alias="bundled/plugins/sistem-araclari/tools/sysinfo.sh">plugins/sistem-araclari/tools/sysinfo.sh</file>
+    <file alias="bundled/plugins/sistem-araclari/tools/sysinfo.ps1">plugins/sistem-araclari/tools/sysinfo.ps1</file>
     <file alias="bundled/plugins/gizli-anahtar-korumasi/plugin.json">plugins/gizli-anahtar-korumasi/plugin.json</file>
     <file alias="bundled/plugins/gizli-anahtar-korumasi/hooks/check.sh">plugins/gizli-anahtar-korumasi/hooks/check.sh</file>
+    <file alias="bundled/plugins/gizli-anahtar-korumasi/hooks/check.ps1">plugins/gizli-anahtar-korumasi/hooks/check.ps1</file>
     <file alias="bundled/plugins/web-fetch-mcp/plugin.json">plugins/web-fetch-mcp/plugin.json</file>
 </qresource>
 </RCC>
