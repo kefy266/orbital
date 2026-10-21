@@ -39,7 +39,8 @@ HEADERS += \
     src/pluginmanager.h \
     src/app/chatmodel.h \
     src/app/controller.h \
-    src/app/iconprovider.h
+    src/app/iconprovider.h \
+    src/arm_compat.h
 
 RESOURCES += resources/orbital.qrc
 
@@ -55,4 +56,5 @@ macx {
     TARGET = Orbital
     QMAKE_TARGET_BUNDLE_PREFIX = io.github.kefy266
     QMAKE_MACOSX_DEPLOYMENT_TARGET = 12.0
+    QMAKE_CXXFLAGS += -include $$PWD/src/arm_compat.h
 }

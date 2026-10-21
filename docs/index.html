@@ -109,6 +109,16 @@
              display: grid; place-items: center; font-size: 14px; margin-bottom: 14px; }
   .step h3 { margin: 0 0 8px; font-size: 17px; }
   .step p { margin: 0 0 12px; color: var(--muted); font-size: 15px; }
+  .step .os { width: 42px; height: 42px; border-radius: 11px; background: var(--accent-soft); display: grid; place-items: center; margin-bottom: 14px; }
+  .step .os svg { width: 22px; height: 22px; fill: none; stroke: var(--accent); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  .step .dl { margin-top: 16px; width: 100%; justify-content: center; }
+  .step pre + .dl { margin-top: 12px; }
+  .build-note { text-align: center; color: var(--muted); margin: 28px 0 0; font-size: 15px; }
+  .build-note a { text-decoration: underline; }
+  .hero-quick-dl { margin-top: 18px; font-size: 14px; color: var(--muted); display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; }
+  .hero-quick-dl a { color: var(--accent); font-weight: 500; text-decoration: underline; text-underline-offset: 3px; }
+  .hero-quick-dl a:hover { opacity: 0.8; }
+  .hero-quick-dl .sep { color: var(--border); }
   pre { margin: 0; background: var(--code); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px;
         font-size: 13.5px; overflow-x: auto; white-space: pre; }
 
@@ -135,7 +145,7 @@
       <a href="#ozellikler">Özellikler</a>
       <a href="#ekranlar">Ekranlar</a>
       <a href="#magaza">Mağaza</a>
-      <a href="#kurulum">Kurulum</a>
+      <a href="#kurulum">İndir</a>
     </div>
     <a class="btn" href="https://github.com/kefy266/orbital">
       <svg viewBox="0 0 24 24"><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"/></svg>
@@ -152,9 +162,17 @@
     <div class="cta">
       <a class="btn primary" href="#kurulum">
         <svg viewBox="0 0 24 24"><path d="M12 4v11M7 10.5 12 15.5l5-5M5 20h14"/></svg>
-        Kur ve başla
+        Ücretsiz indir
       </a>
       <a class="btn" href="https://github.com/kefy266/orbital">Kaynak kodu</a>
+    </div>
+    <div class="hero-quick-dl">
+      <span class="quick-dl-label">Doğrudan indir:</span>
+      <a href="https://github.com/kefy266/orbital/releases/latest/download/Orbital-windows-x64.zip">Windows (.exe)</a>
+      <span class="sep">·</span>
+      <a href="https://github.com/kefy266/orbital/releases/latest/download/Orbital-macos-arm64.dmg">macOS (.app / .dmg)</a>
+      <span class="sep">·</span>
+      <a href="https://github.com/kefy266/orbital/releases/latest/download/Orbital-x86_64.AppImage">Linux (.AppImage)</a>
     </div>
     <div class="shot">
       <div class="bar"><i></i><i></i><i></i></div>
@@ -256,34 +274,36 @@
 <section id="kurulum" class="alt">
   <div class="wrap">
     <div class="section-head">
-      <div class="eyebrow">Kurulum</div>
-      <h2>Üç adımda hazır</h2>
-      <p>Linux için. Her commit'te GitHub Actions da derleyip hazır paket üretir.</p>
+      <div class="eyebrow">İndir</div>
+      <h2>Windows, macOS ve Linux</h2>
+      <p>Kuruluma gerek kalmadan doğrudan çalıştır: indir, aç ve başla.</p>
     </div>
     <div class="steps">
       <div class="step">
-        <div class="n">1</div>
-        <h3>Gerekenleri kur</h3>
-        <p>Arch / CachyOS paket adlarıyla:</p>
-        <pre>sudo pacman -S qt6-base qt6-declarative \
-  qt6-svg syntax-highlighting base-devel</pre>
+        <div class="os"><svg viewBox="0 0 24 24"><path d="M3 5.5 10.5 4.5v7H3zM12 4.3 21 3v8.5h-9zM3 12.5h7.5v7L3 18.5zM12 12.5h9V21l-9-1.3z"/></svg></div>
+        <h3>Windows 10 / 11</h3>
+        <p>Zip'i aç ve <code>Orbital.exe</code>'yi çalıştır. SmartScreen çıkarsa <em>Ek bilgi → Yine de çalıştır</em>.</p>
+        <a class="btn primary dl" href="https://github.com/kefy266/orbital/releases/latest/download/Orbital-windows-x64.zip">
+          <svg viewBox="0 0 24 24"><path d="M12 4v11M7 10.5 12 15.5l5-5M5 20h14"/></svg>Windows için indir (.exe)</a>
       </div>
       <div class="step">
-        <div class="n">2</div>
-        <h3>İndir ve derle</h3>
-        <p>Depoyu klonla ve derle:</p>
-        <pre>git clone https://github.com/kefy266/orbital
-cd orbital
-qmake6 orbital.pro -o build.mk
-make -f build.mk -j$(nproc)</pre>
+        <div class="os"><svg viewBox="0 0 24 24"><path d="M16.4 12.6c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.2-2.8.8-3.5.8s-1.8-.8-3-.8C6.9 7.3 5.5 8.2 4.7 9.6c-1.6 2.8-.4 6.9 1.2 9.1.8 1.1 1.7 2.3 2.9 2.3 1.1 0 1.6-.7 3-.7s1.8.7 3 .7c1.2 0 2-1.1 2.8-2.2.9-1.3 1.2-2.5 1.3-2.6-.1 0-2.5-1-2.5-3.6zM14.1 5.8c.6-.8 1.1-1.8 1-2.8-.9 0-2 .6-2.7 1.4-.6.7-1.1 1.7-1 2.7 1 .1 2-.5 2.7-1.3z"/></svg></div>
+        <h3>macOS 12+ (Apple Silicon)</h3>
+        <p>DMG'yi aç, <code>Orbital.app</code>'i Uygulamalar'a sürükle. İlk açılışta <em>sağ tık → Aç</em>; uygulama henüz Apple ile imzalanmadı.</p>
+        <a class="btn primary dl" href="https://github.com/kefy266/orbital/releases/latest/download/Orbital-macos-arm64.dmg">
+          <svg viewBox="0 0 24 24"><path d="M12 4v11M7 10.5 12 15.5l5-5M5 20h14"/></svg>macOS için indir (.app / .dmg)</a>
       </div>
       <div class="step">
-        <div class="n">3</div>
-        <h3>Çalıştır</h3>
-        <p>İlk açılışta bulut modelleri kendiliğinden hazırlanır:</p>
-        <pre>./build/orbital</pre>
+        <div class="os"><svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="15" rx="2.5"/><path d="m7.5 10 2.5 2-2.5 2M12.5 15h4"/></svg></div>
+        <h3>Linux (x86_64)</h3>
+        <p>AppImage'i indir, izin ver ve çalıştır. Paket kurmaya gerek yok:</p>
+        <pre>chmod +x Orbital-x86_64.AppImage
+./Orbital-x86_64.AppImage</pre>
+        <a class="btn primary dl" href="https://github.com/kefy266/orbital/releases/latest/download/Orbital-x86_64.AppImage">
+          <svg viewBox="0 0 24 24"><path d="M12 4v11M7 10.5 12 15.5l5-5M5 20h14"/></svg>Linux için indir (.AppImage)</a>
       </div>
     </div>
+    <p class="build-note">Kaynaktan derlemek ya da <code>.tar.gz</code> paketini indirmek mi istiyorsun? Adımlar <a href="https://github.com/kefy266/orbital#kaynaktan-derleme">README</a>'de. Her commit üç platformda otomatik derlenip test edilir.</p>
   </div>
 </section>
 

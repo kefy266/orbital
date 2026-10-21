@@ -28,7 +28,7 @@ jobs:
       - name: Install dependencies
         run: |
           pacman -Syu --noconfirm --needed base-devel git python \
-            qt6-base qt6-declarative qt6-svg syntax-highlighting ttf-dejavu
+            qt6-base qt6-declarative qt6-svg syntax-highlighting ttf-dejavu curl squashfs-tools
 
       - uses: actions/checkout@v4
 
@@ -68,10 +68,40 @@ jobs:
           cp build/orbital README.md dist/orbital/
           tar -C dist -czf orbital-linux-x86_64.tar.gz orbital
 
+          # AppImage
+          mkdir -p AppDir/usr/bin AppDir/usr/share/applications AppDir/usr/share/icons/hicolor/scalable/apps
+          cp build/orbital AppDir/usr/bin/orbital
+          cp resources/orbital.svg AppDir/orbital.svg
+          cp resources/orbital.svg AppDir/.DirIcon
+          cp resources/orbital.svg AppDir/usr/share/icons/hicolor/scalable/apps/orbital.svg
+          cat > AppDir/orbital.desktop << 'EOF'
+          [Desktop Entry]
+          Type=Application
+          Name=Orbital
+          Exec=orbital
+          Icon=orbital
+          Categories=Development;
+          Comment=AI coding assistant
+          Terminal=false
+          EOF
+          cp AppDir/orbital.desktop AppDir/usr/share/applications/orbital.desktop
+          cat > AppDir/AppRun << 'EOF'
+          #!/bin/sh
+          HERE="$(dirname "$(readlink -f "${0}")")"
+          export PATH="${HERE}/usr/bin:${PATH}"
+          exec "${HERE}/usr/bin/orbital" "$@"
+          EOF
+          chmod +x AppDir/AppRun
+
+          curl -sL https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage -o appimagetool
+          chmod +x appimagetool
+          ARCH=x86_64 ./appimagetool --appimage-extract-and-run AppDir Orbital-x86_64.AppImage
+
       - uses: actions/upload-artifact@v4
         with:
           name: linux
           path: |
+            Orbital-x86_64.AppImage
             orbital-linux-x86_64.tar.gz
             smoke-linux.png
 
@@ -176,6 +206,7 @@ jobs:
         with:
           generate_release_notes: true
           files: |
+            artifacts/linux/Orbital-x86_64.AppImage
             artifacts/linux/orbital-linux-x86_64.tar.gz
             artifacts/windows/Orbital-windows-x64.zip
             artifacts/macos/Orbital-macos-arm64.dmg

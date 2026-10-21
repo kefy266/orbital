@@ -14,19 +14,45 @@
 - **Mağaza:** skill ve eklentileri uygulamanın içinden tek tıkla yükle/kaldır. Katalog bu depodaki `store/` klasöründedir.
 - **Arayüz:** gruplu sohbet geçmişi, akan markdown, KDE renklendirmeli kod blokları, açılır araç kartları, Build/Plan modları.
 
-## Derleme
+## Kurulum
 
-Gerekenler (Arch/CachyOS paket adları): `qt6-base qt6-declarative qt6-svg syntax-highlighting` ve bir C++17 derleyicisi.
+Hazır paketler [Sürümler](https://github.com/kefy266/orbital/releases/latest) sayfasında. Windows ve macOS paketleri Qt'yi içinde taşır; ayrıca bir şey kurman gerekmez.
+
+| Sistem | Paket | Not |
+|---|---|---|
+| Windows 10/11 (x64) | [`Orbital-windows-x64.zip`](https://github.com/kefy266/orbital/releases/latest/download/Orbital-windows-x64.zip) | Zip'i aç, `Orbital.exe`'yi çalıştır. SmartScreen uyarısında **Ek bilgi → Yine de çalıştır**. |
+| macOS 12+ (Apple Silicon) | [`Orbital-macos-arm64.dmg`](https://github.com/kefy266/orbital/releases/latest/download/Orbital-macos-arm64.dmg) | Orbital'i Uygulamalar'a sürükle. İlk açılışta **sağ tık → Aç** (uygulama Apple ile imzalanmadı). |
+| Linux (x86_64) | [`Orbital-x86_64.AppImage`](https://github.com/kefy266/orbital/releases/latest/download/Orbital-x86_64.AppImage) · [`.tar.gz`](https://github.com/kefy266/orbital/releases/latest/download/orbital-linux-x86_64.tar.gz) | AppImage kurulum gerektirmez (`chmod +x` verip çalıştır). `.tar.gz` için sistemde Qt 6 kurulu olmalı. |
+
+İlk açılışta Orbital bulut modellerini hazırlamak için motorunu bir kez indirir (yaklaşık 60–180 MB).
+
+### Kaynaktan derleme
+
+**Linux** (Arch/CachyOS paket adları):
 
 ```bash
-qmake6 orbital.pro -o build.mk && make -f build.mk -j$(nproc)
+sudo pacman -S qt6-base qt6-declarative qt6-svg syntax-highlighting base-devel
 ```
 
 ```bash
-./build/orbital
+qmake6 orbital.pro -o build.mk && make -f build.mk -j$(nproc) && ./build/orbital
 ```
 
-Ya da [GitHub Actions](https://github.com/kefy266/orbital/actions) çıktılarından hazır derlemeyi indir (sistemde Qt 6 kurulu olmalı). `v` ile başlayan her etiket otomatik bir sürüm (release) oluşturur.
+**macOS** ([Qt 6.10+](https://www.qt.io/download-qt-installer) ya da `brew install qt`):
+
+```bash
+qmake CONFIG+=release orbital.pro -o build.mk && make -f build.mk -j8 && open build/Orbital.app
+```
+
+**Windows** (Qt 6.10+ MSVC 2022 ve Visual Studio; "x64 Native Tools" komut isteminde):
+
+```bat
+qmake CONFIG+=release orbital.pro -o build.mk && nmake /f build.mk && build\Orbital.exe
+```
+
+Kod renklendirmesi KDE'nin KSyntaxHighlighting kütüphanesini kullanır; bulunmadığı sistemlerde kod blokları renksiz gösterilir. Windows'ta `.sh` uzantılı eklenti betikleri için Git for Windows'un `bash`'i gerekir; eklentiler `.ps1` ya da `.py` betikleri de kullanabilir.
+
+Her commit'te [GitHub Actions](https://github.com/kefy266/orbital/actions) üç platformda derler ve test eder; `v` ile başlayan her etiket bu üç paketle otomatik bir sürüm oluşturur.
 
 ## Mağazaya katkı
 
