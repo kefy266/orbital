@@ -172,6 +172,13 @@ ListView {
                         onClicked: App.retryLastTurn()
                     }
                 }
+
+                // In-chat sponsor banner (Blufy, EdgeConvert, Origin Edge Hizmet)
+                ChatAdBanner {
+                    visible: row.lastInTurn && !(App.busy && row.index === view.count - 1)
+                    width: parent.width
+                    adIndex: row.index
+                }
             }
         }
 

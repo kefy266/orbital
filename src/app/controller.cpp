@@ -1543,39 +1543,39 @@ void AppController::checkForUpdates(bool silent)
             }
         }
 
-        if (newer) {
-            m_updateVersion = cleanTag;
-            m_updateNotes = obj.value(QStringLiteral("body")).toString();
+        m_updateVersion = cleanTag;
+        m_updateNotes = obj.value(QStringLiteral("body")).toString();
 
-            const QJsonArray assets = obj.value(QStringLiteral("assets")).toArray();
-            m_updateDownloadUrl.clear();
-            m_updateAssetSize = 0;
+        const QJsonArray assets = obj.value(QStringLiteral("assets")).toArray();
+        m_updateDownloadUrl.clear();
+        m_updateAssetSize = 0;
 
-            for (const QJsonValue &v : assets) {
-                const QJsonObject a = v.toObject();
-                const QString name = a.value(QStringLiteral("name")).toString();
+        for (const QJsonValue &v : assets) {
+            const QJsonObject a = v.toObject();
+            const QString name = a.value(QStringLiteral("name")).toString();
 #if defined(Q_OS_WIN)
-                if (name.endsWith(QStringLiteral("-windows-x64.zip"), Qt::CaseInsensitive) ||
-                    name.endsWith(QStringLiteral(".zip"), Qt::CaseInsensitive)) {
-                    m_updateDownloadUrl = a.value(QStringLiteral("browser_download_url")).toString();
-                    m_updateAssetSize = a.value(QStringLiteral("size")).toInteger();
-                    break;
-                }
-#elif defined(Q_OS_MACOS)
-                if (name.endsWith(QStringLiteral(".dmg"), Qt::CaseInsensitive)) {
-                    m_updateDownloadUrl = a.value(QStringLiteral("browser_download_url")).toString();
-                    m_updateAssetSize = a.value(QStringLiteral("size")).toInteger();
-                    break;
-                }
-#else
-                if (name.endsWith(QStringLiteral(".AppImage"), Qt::CaseInsensitive)) {
-                    m_updateDownloadUrl = a.value(QStringLiteral("browser_download_url")).toString();
-                    m_updateAssetSize = a.value(QStringLiteral("size")).toInteger();
-                    break;
-                }
-#endif
+            if (name.endsWith(QStringLiteral("-windows-x64.zip"), Qt::CaseInsensitive) ||
+                name.endsWith(QStringLiteral(".zip"), Qt::CaseInsensitive)) {
+                m_updateDownloadUrl = a.value(QStringLiteral("browser_download_url")).toString();
+                m_updateAssetSize = a.value(QStringLiteral("size")).toInteger();
+                break;
             }
+#elif defined(Q_OS_MACOS)
+            if (name.endsWith(QStringLiteral(".dmg"), Qt::CaseInsensitive)) {
+                m_updateDownloadUrl = a.value(QStringLiteral("browser_download_url")).toString();
+                m_updateAssetSize = a.value(QStringLiteral("size")).toInteger();
+                break;
+            }
+#else
+            if (name.endsWith(QStringLiteral(".AppImage"), Qt::CaseInsensitive)) {
+                m_updateDownloadUrl = a.value(QStringLiteral("browser_download_url")).toString();
+                m_updateAssetSize = a.value(QStringLiteral("size")).toInteger();
+                break;
+            }
+#endif
+        }
 
+        if (newer) {
             if (!m_updateDownloadUrl.isEmpty()) {
                 m_updateAvailable = true;
                 m_updateStatus = QStringLiteral("Yeni sürüm mevcut: v%1").arg(m_updateVersion);

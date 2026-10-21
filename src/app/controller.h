@@ -65,6 +65,7 @@ class AppController : public QObject
     Q_PROPERTY(bool updating READ updating NOTIFY updateChanged)
     Q_PROPERTY(qreal updateProgress READ updateProgress NOTIFY updateProgressChanged)
     Q_PROPERTY(QString updateStatus READ updateStatus NOTIFY updateChanged)
+    Q_PROPERTY(bool canReinstall READ canReinstall NOTIFY updateChanged)
 
 public:
     explicit AppController(QObject *parent = nullptr);
@@ -179,6 +180,7 @@ public:
     bool updating() const { return m_updating; }
     qreal updateProgress() const { return m_updateProgress; }
     QString updateStatus() const { return m_updateStatus; }
+    bool canReinstall() const { return !m_updateDownloadUrl.isEmpty(); }
     Q_INVOKABLE void checkForUpdates(bool silent = false);
     Q_INVOKABLE void applyUpdate();
 

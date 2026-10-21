@@ -4,11 +4,12 @@ import QtQuick.Layouts
 import Orbital
 
 // Non-intrusive, native sponsor card for developer services.
-// Cycles smoothly between built-in services and optionally fetches dynamic campaigns.
+// Strictly bounded to prevent any horizontal or vertical overflow.
 Rectangle {
     id: root
-    implicitHeight: 70
-    radius: Theme.radius
+    implicitHeight: 52
+    Layout.fillWidth: true
+    radius: Theme.radiusSm + 2
     color: Theme.surfaceAlt
     border.width: 1
     border.color: mouseArea.containsMouse ? Theme.accent : Theme.border
@@ -22,7 +23,7 @@ Rectangle {
             "id": "blufy",
             "name": "Blufy",
             "tag": "Ücretsiz MP3/4 İndirici",
-            "desc": "YouTube ve medyalar için hızlı, reklamsız indirme aracı.",
+            "desc": "blufy.oedge.xyz • Hızlı medya indirme",
             "url": "https://blufy.oedge.xyz",
             "icon": "download"
         },
@@ -30,15 +31,15 @@ Rectangle {
             "id": "convert",
             "name": "EdgeConvert",
             "tag": "Dosya Dönüştürücü",
-            "desc": "Video, ses ve belgeleri anında farklı formatlara çevirin.",
+            "desc": "convert.oedge.xyz • Medya dönüştürme",
             "url": "https://convert.oedge.xyz",
             "icon": "refresh"
         },
         {
             "id": "hizmet",
             "name": "Origin Edge Hizmet",
-            "tag": "Web & Tasarım Çözümleri",
-            "desc": "Güvenilir web barındırma, sunucu ve modern web tasarım hizmeti.",
+            "tag": "Web & Tasarım",
+            "desc": "hizmet.oedge.xyz • Hosting & Web Çözümleri",
             "url": "https://hizmet.oedge.xyz",
             "icon": "globe"
         }
@@ -48,7 +49,7 @@ Rectangle {
 
     Timer {
         id: rotateTimer
-        interval: 18000
+        interval: 16000
         repeat: true
         running: !mouseArea.containsMouse && root.campaigns.length > 1
         onTriggered: {
@@ -59,28 +60,8 @@ Rectangle {
 
     SequentialAnimation {
         id: fadeAnim
-        NumberAnimation { target: contentBox; property: "opacity"; to: 0.2; duration: 120; easing.type: Easing.OutQuad }
-        NumberAnimation { target: contentBox; property: "opacity"; to: 1.0; duration: 180; easing.type: Easing.InQuad }
-    }
-
-    Component.onCompleted: {
-        // Optional remote sponsor update (falls back cleanly if offline/unavailable)
-        try {
-            var xhr = new XMLHttpRequest()
-            xhr.open("GET", "https://oedge.xyz/api/orbital_ads.json")
-            xhr.onreadystatechange = function() {
-                if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
-                    try {
-                        var data = JSON.parse(xhr.responseText)
-                        if (Array.isArray(data) && data.length > 0) {
-                            root.campaigns = data
-                            root.currentIndex = 0
-                        }
-                    } catch (e) {}
-                }
-            }
-            xhr.send()
-        } catch (err) {}
+        NumberAnimation { target: contentBox; property: "opacity"; to: 0.2; duration: 100 }
+        NumberAnimation { target: contentBox; property: "opacity"; to: 1.0; duration: 150 }
     }
 
     MouseArea {
@@ -94,90 +75,77 @@ Rectangle {
         }
     }
 
-    ColumnLayout {
+    RowLayout {
         id: contentBox
         anchors.fill: parent
-        anchors.margins: 8
-        spacing: 3
+        anchors.leftMargin: 8
+        anchors.rightMargin: 8
+        spacing: 8
 
-        RowLayout {
+        Rectangle {
+            width: 24
+            height: 24
+            radius: 6
+            color: Theme.accentSoft
+            Icon {
+                anchors.centerIn: parent
+                name: root.currentItem.icon || "globe"
+                size: 13
+                color: Theme.accent
+            }
+        }
+
+        ColumnLayout {
             Layout.fillWidth: true
-            spacing: 6
+            spacing: 1
+            clip: true
 
-            Rectangle {
-                width: 18
-                height: 18
-                radius: 4
-                color: Theme.accentSoft
-                Icon {
-                    anchors.centerIn: parent
-                    name: root.currentItem.icon || "globe"
-                    size: 11
-                    color: Theme.accent
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 5
+
+                Text {
+                    text: root.currentItem.name
+                    font.family: Theme.font
+                    font.pixelSize: Theme.fontSmall
+                    font.weight: Font.DemiBold
+                    color: Theme.text
+                    elide: Text.ElideRight
+                    Layout.fillWidth: true
+                }
+
+                Rectangle {
+                    implicitHeight: 14
+                    implicitWidth: tagText.implicitWidth + 6
+                    radius: 3
+                    color: Theme.hover
+                    Text {
+                        id: tagText
+                        anchors.centerIn: parent
+                        text: "SPONSOR"
+                        font.family: Theme.font
+                        font.pixelSize: 8
+                        font.weight: Font.Bold
+                        color: Theme.textMuted
+                    }
                 }
             }
 
             Text {
-                text: root.currentItem.name
+                Layout.fillWidth: true
+                text: root.currentItem.desc
                 font.family: Theme.font
-                font.pixelSize: Theme.fontSmall
-                font.weight: Font.DemiBold
-                color: Theme.text
+                font.pixelSize: Theme.fontCaption - 1
+                color: Theme.textMuted
                 elide: Text.ElideRight
-            }
-
-            Rectangle {
-                implicitHeight: 15
-                implicitWidth: tagText.implicitWidth + 8
-                radius: 3
-                color: Theme.hover
-                border.width: 1
-                border.color: Theme.border
-                Text {
-                    id: tagText
-                    anchors.centerIn: parent
-                    text: root.currentItem.tag
-                    font.family: Theme.font
-                    font.pixelSize: 9
-                    font.weight: Font.Medium
-                    color: Theme.textMuted
-                }
-            }
-
-            Item { Layout.fillWidth: true }
-
-            Icon {
-                name: "external"
-                size: 12
-                color: mouseArea.containsMouse ? Theme.accent : Theme.textFaint
+                maximumLineCount: 1
             }
         }
 
-        Text {
-            Layout.fillWidth: true
-            text: root.currentItem.desc
-            font.family: Theme.font
-            font.pixelSize: Theme.fontCaption - 1
-            color: Theme.textMuted
-            elide: Text.ElideRight
-            maximumLineCount: 1
-        }
-
-        Row {
-            Layout.alignment: Qt.AlignRight
-            spacing: 4
-            Repeater {
-                model: root.campaigns.length
-                delegate: Rectangle {
-                    required property int index
-                    width: index === root.currentIndex ? 12 : 4
-                    height: 4
-                    radius: 2
-                    color: index === root.currentIndex ? Theme.accent : Theme.border
-                    Behavior on width { NumberAnimation { duration: 150 } }
-                    Behavior on color { ColorAnimation { duration: 150 } }
-                }
-            }
+        Icon {
+            name: "external"
+            size: 13
+            color: mouseArea.containsMouse ? Theme.accent : Theme.textFaint
         }
     }
 }
