@@ -1476,7 +1476,7 @@ void AppController::applySettings()
 QString AppController::appVersion() const
 {
     const QString ver = QCoreApplication::applicationVersion();
-    return ver.isEmpty() ? QStringLiteral("0.3.2") : ver;
+    return ver.isEmpty() ? QStringLiteral("0.3.3") : ver;
 }
 
 void AppController::checkForUpdates(bool silent)
