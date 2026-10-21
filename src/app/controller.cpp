@@ -43,7 +43,7 @@ AppController::AppController(QObject *parent)
     const QJsonObject settings = Paths::loadSettings();
     m_directory = settings.value(QStringLiteral("lastProject")).toString();
     if (m_directory.isEmpty() || !QDir(m_directory).exists())
-        m_directory = QDir::homePath();
+        m_directory = Paths::noFolderDir();
 
     m_engines.insert(QStringLiteral("native"), new NativeEngine(m_skills, m_plugins, this));
     m_engines.insert(QStringLiteral("opencode"), new OpencodeEngine(m_skills, m_plugins, this));
@@ -51,6 +51,7 @@ AppController::AppController(QObject *parent)
     m_sessionRefresh.setSingleShot(true);
     m_sessionRefresh.setInterval(300);
     connect(&m_sessionRefresh, &QTimer::timeout, this, &AppController::refreshSessions);
+    loadPromptHistory();
 }
 
 AppController::~AppController()
@@ -83,8 +84,15 @@ QString AppController::engineId() const
 
 QString AppController::projectName() const
 {
+    if (m_directory == Paths::noFolderDir())
+        return QStringLiteral("Klasörsüz (no-folder)");
     const QString name = QDir(m_directory).dirName();
     return name.isEmpty() ? m_directory : name;
+}
+
+bool AppController::isNoFolder() const
+{
+    return m_directory == Paths::noFolderDir();
 }
 
 QString AppController::modelRef() const
@@ -467,8 +475,9 @@ void AppController::refreshSessions()
             return;
         QList<SessionModel::Row> rows;
         for (const SessionInfo &s : list)
-            rows << SessionModel::Row{s.id, s.title, s.updated};
+            rows << SessionModel::Row{s.id, s.title, s.updated, s.directory};
         m_sessions->setRows(rows);
+        Q_EMIT projectsChanged();
         if (!m_sessionId.isEmpty()) {
             const QString t = m_sessions->titleOf(m_sessionId);
             if (!t.isEmpty() && t != m_sessionTitle) {
@@ -500,6 +509,18 @@ void AppController::openSession(const QString &id)
 {
     if (!m_engine || id == m_sessionId)
         return;
+
+    const QString sessionDir = m_sessions->directoryOf(id);
+    if (!sessionDir.isEmpty() && sessionDir != m_directory && (sessionDir == Paths::noFolderDir() || QDir(sessionDir).exists())) {
+        m_directory = sessionDir;
+        QJsonObject s = Paths::loadSettings();
+        s.insert(QStringLiteral("lastProject"), sessionDir);
+        Paths::saveSettings(s);
+        Q_EMIT projectChanged();
+        Q_EMIT projectsChanged();
+        m_engine->start(m_directory);
+    }
+
     m_sessionId = id;
     m_sessionTitle = m_sessions->titleOf(id);
     m_usage.clear();
@@ -539,9 +560,99 @@ void AppController::setProject(const QUrl &folder)
     m_directory = dir;
     QJsonObject s = Paths::loadSettings();
     s.insert(QStringLiteral("lastProject"), dir);
+
+    QJsonArray recents = s.value(QStringLiteral("recentProjects")).toArray();
+    QStringList paths;
+    paths << dir;
+    for (const QJsonValue &v : recents) {
+        const QString p = v.toString();
+        if (p != dir && (p == Paths::noFolderDir() || QDir(p).exists()))
+            paths << p;
+    }
+    while (paths.size() > 20)
+        paths.removeLast();
+    s.insert(QStringLiteral("recentProjects"), QJsonArray::fromStringList(paths));
     Paths::saveSettings(s);
+
     Q_EMIT projectChanged();
+    Q_EMIT projectsChanged();
     switchEngine(engineId());
+}
+
+void AppController::openProjectPath(const QString &path)
+{
+    setProject(QUrl::fromLocalFile(path));
+}
+
+void AppController::openNoFolderProject()
+{
+    setProject(QUrl::fromLocalFile(Paths::noFolderDir()));
+}
+
+void AppController::removeRecentProject(const QString &path)
+{
+    QJsonObject s = Paths::loadSettings();
+    QJsonArray recents = s.value(QStringLiteral("recentProjects")).toArray();
+    QStringList paths;
+    for (const QJsonValue &v : recents) {
+        const QString p = v.toString();
+        if (p != path)
+            paths << p;
+    }
+    s.insert(QStringLiteral("recentProjects"), QJsonArray::fromStringList(paths));
+    Paths::saveSettings(s);
+    Q_EMIT projectsChanged();
+}
+
+void AppController::setProjectFilter(const QString &filter)
+{
+    if (m_projectFilter == filter)
+        return;
+    m_projectFilter = filter;
+    Q_EMIT projectFilterChanged();
+}
+
+QVariantList AppController::projects() const
+{
+    QVariantList list;
+    QSet<QString> seen;
+    const QString noFolder = Paths::noFolderDir();
+
+    QHash<QString, int> counts;
+    for (const SessionModel::Row &r : m_sessions->allRows()) {
+        if (!r.directory.isEmpty())
+            counts[r.directory]++;
+    }
+
+    auto addProject = [&](const QString &path) {
+        if (path.isEmpty() || seen.contains(path))
+            return;
+        if (path != noFolder && !QDir(path).exists())
+            return;
+        seen.insert(path);
+        const bool isNo = (path == noFolder);
+        const QString name = isNo ? QStringLiteral("Klasörsüz (no-folder)") : QDir(path).dirName();
+        list.append(QVariantMap{
+            {QStringLiteral("name"), name.isEmpty() ? path : name},
+            {QStringLiteral("path"), path},
+            {QStringLiteral("isNoFolder"), isNo},
+            {QStringLiteral("isCurrent"), (path == m_directory)},
+            {QStringLiteral("sessionCount"), counts.value(path, 0)}
+        });
+    };
+
+    if (!m_directory.isEmpty())
+        addProject(m_directory);
+    addProject(noFolder);
+
+    const QJsonObject s = Paths::loadSettings();
+    for (const QJsonValue &v : s.value(QStringLiteral("recentProjects")).toArray())
+        addProject(v.toString());
+
+    for (auto it = counts.begin(); it != counts.end(); ++it)
+        addProject(it.key());
+
+    return list;
 }
 
 void AppController::submit(const QString &rawText)
@@ -549,6 +660,14 @@ void AppController::submit(const QString &rawText)
     const QString trimmed = rawText.trimmed();
     if (trimmed.isEmpty())
         return;
+
+    m_promptHistory.removeAll(trimmed);
+    m_promptHistory.append(trimmed);
+    while (m_promptHistory.size() > 100)
+        m_promptHistory.removeFirst();
+    savePromptHistory();
+    Q_EMIT promptHistoryChanged();
+
     if (!m_engine || !m_engineReady) {
         m_queued = trimmed;
         Q_EMIT toast(QStringLiteral("Motor hazırlanıyor; mesajın hazır olunca gönderilecek"));
@@ -727,6 +846,85 @@ void AppController::copyText(const QString &text)
 void AppController::openPath(const QString &path)
 {
     QDesktopServices::openUrl(QUrl::fromLocalFile(path));
+}
+
+void AppController::loadPromptHistory()
+{
+    QFile f(Paths::dataDir() + QStringLiteral("/prompt_history.json"));
+    if (f.open(QIODevice::ReadOnly)) {
+        const QJsonArray arr = QJsonDocument::fromJson(f.readAll()).array();
+        for (const QJsonValue &v : arr) {
+            const QString s = v.toString();
+            if (!s.isEmpty())
+                m_promptHistory.append(s);
+        }
+    }
+}
+
+void AppController::savePromptHistory()
+{
+    QFile f(Paths::dataDir() + QStringLiteral("/prompt_history.json"));
+    if (f.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        QJsonArray arr;
+        for (const QString &s : m_promptHistory)
+            arr.append(s);
+        f.write(QJsonDocument(arr).toJson(QJsonDocument::Compact));
+    }
+}
+
+void AppController::clearPromptHistory()
+{
+    m_promptHistory.clear();
+    savePromptHistory();
+    Q_EMIT promptHistoryChanged();
+}
+
+void AppController::retryLastTurn()
+{
+    if (busy() || !m_engine)
+        return;
+    const QString prompt = m_chat->lastUserPrompt();
+    if (!prompt.isEmpty())
+        submit(prompt);
+}
+
+void AppController::renameSession(const QString &id, const QString &newTitle)
+{
+    const QString trimmed = newTitle.trimmed();
+    if (trimmed.isEmpty() || !m_engine)
+        return;
+    m_engine->renameSession(id, trimmed, [this, id, trimmed](const QString &error) {
+        if (!error.isEmpty()) {
+            Q_EMIT toast(QStringLiteral("Yeniden adlandırılamadı: %1").arg(error));
+        } else {
+            if (id == m_sessionId) {
+                m_sessionTitle = trimmed;
+                Q_EMIT sessionChanged();
+            }
+            refreshSessions();
+            Q_EMIT toast(QStringLiteral("Sohbet adı güncellendi"));
+        }
+    });
+}
+
+void AppController::exportChatAsMarkdown()
+{
+    const QString md = m_chat->exportMarkdown(m_sessionTitle, projectName());
+    copyText(md);
+    Q_EMIT toast(QStringLiteral("Sohbet Markdown olarak panoya kopyalandı"));
+}
+
+QString AppController::formatDroppedUrl(const QUrl &url) const
+{
+    if (!url.isLocalFile())
+        return url.toString();
+    const QString local = url.toLocalFile();
+    QDir projectDir(m_directory);
+    if (!m_directory.isEmpty() && local.startsWith(m_directory)) {
+        const QString rel = projectDir.relativeFilePath(local);
+        return rel.contains(QLatin1Char(' ')) ? QStringLiteral("\"%1\"").arg(rel) : rel;
+    }
+    return local.contains(QLatin1Char(' ')) ? QStringLiteral("\"%1\"").arg(local) : local;
 }
 
 // ---------------------------------------------------------------- settings

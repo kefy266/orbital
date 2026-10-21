@@ -12,6 +12,9 @@ Item {
     readonly property bool canSend: input.text.trim().length > 0 && !App.busy
     implicitHeight: card.height
 
+    property int historyIndex: -1
+    property string currentDraft: ""
+
     function focusInput() { input.forceActiveFocus() }
     function setText(t) { input.text = t; input.cursorPosition = t.length; input.forceActiveFocus() }
 
@@ -20,6 +23,8 @@ Item {
         const t = input.text.trim()
         if (!t.length || App.busy)
             return
+        historyIndex = -1
+        currentDraft = ""
         App.submit(t)
         input.text = ""
     }
@@ -39,9 +44,30 @@ Item {
         height: column.implicitHeight + 20
         radius: 24
         color: Theme.surface
-        border.width: 1
-        border.color: input.activeFocus ? Theme.borderStrong : Theme.border
+        border.width: dropArea.containsDrag ? 2 : 1
+        border.color: dropArea.containsDrag ? Theme.accent : (input.activeFocus ? Theme.borderStrong : Theme.border)
         Behavior on border.color { ColorAnimation { duration: Theme.fast } }
+
+        DropArea {
+            id: dropArea
+            anchors.fill: parent
+            onDropped: drop => {
+                if (drop.hasUrls && drop.urls.length > 0) {
+                    var formatted = []
+                    for (var i = 0; i < drop.urls.length; ++i) {
+                        formatted.push(App.formatDroppedUrl(drop.urls[i]))
+                    }
+                    if (formatted.length > 0) {
+                        if (input.text.length > 0 && !input.text.endsWith(" "))
+                            input.text += " "
+                        input.text += formatted.join(" ")
+                        input.cursorPosition = input.text.length
+                        input.forceActiveFocus()
+                    }
+                    drop.acceptProposedAction()
+                }
+            }
+        }
 
         ColumnLayout {
             id: column
@@ -98,6 +124,32 @@ Item {
                             if (event.key === Qt.Key_Down) { slash.move(1); event.accepted = true; return }
                             if (event.key === Qt.Key_Tab) { slash.accept(); event.accepted = true; return }
                             if (event.key === Qt.Key_Escape) { slash.close(); event.accepted = true; return }
+                        } else {
+                            if (event.key === Qt.Key_Up && (input.cursorPosition === 0 || input.text.length === 0)) {
+                                if (App.promptHistory && App.promptHistory.length > 0) {
+                                    if (root.historyIndex === -1) {
+                                        root.currentDraft = input.text
+                                        root.historyIndex = App.promptHistory.length - 1
+                                    } else if (root.historyIndex > 0) {
+                                        root.historyIndex--
+                                    }
+                                    input.text = App.promptHistory[root.historyIndex]
+                                    input.cursorPosition = input.text.length
+                                    event.accepted = true
+                                    return
+                                }
+                            } else if (event.key === Qt.Key_Down && root.historyIndex !== -1) {
+                                if (root.historyIndex < App.promptHistory.length - 1) {
+                                    root.historyIndex++
+                                    input.text = App.promptHistory[root.historyIndex]
+                                } else {
+                                    root.historyIndex = -1
+                                    input.text = root.currentDraft
+                                }
+                                input.cursorPosition = input.text.length
+                                event.accepted = true
+                                return
+                            }
                         }
                         if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
                                 && !(event.modifiers & (Qt.ShiftModifier | Qt.ControlModifier))) {

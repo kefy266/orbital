@@ -35,6 +35,7 @@ public:
     void listSessions(std::function<void(const QList<SessionInfo> &)> done) override;
     void createSession(std::function<void(const QString &, const QString &)> done) override;
     void deleteSession(const QString &id, Done done) override;
+    void renameSession(const QString &id, const QString &title, Done done) override;
     void loadHistory(const QString &id, std::function<void(const QJsonArray &)> done) override;
 
     void listModels(std::function<void(const QList<ModelChoice> &)> done) override;

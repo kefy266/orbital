@@ -6,6 +6,7 @@ import Orbital
 // Transcript. Items come from App.chat (ChatModel); each row picks a component by kind.
 ListView {
     id: view
+    signal editPromptRequested(string prompt)
     property bool stick: true
     readonly property real column: Math.min(Theme.chatWidth, width - 48)
 
@@ -59,7 +60,10 @@ ListView {
         Component {
             id: userMsg
             Column {
-                spacing: 6
+                id: userCol
+                spacing: 4
+                property bool hovered: bubbleHover.hovered || actionHover.hovered
+
                 Flow {
                     width: parent.width
                     layoutDirection: Qt.RightToLeft
@@ -96,6 +100,24 @@ ListView {
                             selectionColor: Theme.accentSoft
                             selectedTextColor: Theme.text
                         }
+                    }
+                    HoverHandler { id: bubbleHover }
+                }
+                Row {
+                    anchors.right: parent.right
+                    spacing: 2
+                    opacity: userCol.hovered ? 1 : 0
+                    Behavior on opacity { NumberAnimation { duration: Theme.fast } }
+                    HoverHandler { id: actionHover }
+                    IconButton {
+                        implicitWidth: 26; implicitHeight: 26; iconSize: 14
+                        iconName: "pencil"; tip: "Mesajı düzenle"
+                        onClicked: view.editPromptRequested(row.text)
+                    }
+                    IconButton {
+                        implicitWidth: 26; implicitHeight: 26; iconSize: 14
+                        iconName: "copy"; tip: "Metni kopyala"
+                        onClicked: App.copyText(row.text)
                     }
                 }
             }
@@ -137,11 +159,17 @@ ListView {
                 // Turn actions
                 Row {
                     visible: row.lastInTurn && !(App.busy && row.index === view.count - 1)
-                    spacing: 2
+                    spacing: 4
                     IconButton {
                         implicitWidth: 28; implicitHeight: 28; iconSize: 15
                         iconName: "copy"; tip: "Yanıtı kopyala"
                         onClicked: App.copyText(App.chat.turnText(row.index))
+                    }
+                    IconButton {
+                        visible: !App.busy && row.index === view.count - 1
+                        implicitWidth: 28; implicitHeight: 28; iconSize: 15
+                        iconName: "refresh"; tip: "Yanıtı yeniden oluştur"
+                        onClicked: App.retryLastTurn()
                     }
                 }
             }

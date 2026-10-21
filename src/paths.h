@@ -13,6 +13,7 @@ QString skillsDir();
 QString pluginsDir();
 QString settingsFile();
 QString dataDir(); // ~/.local/share/orbital
+QString noFolderDir(); // /orbital/no-folder or ~/.local/share/orbital/no-folder
 
 // Copies bundled example skills/plugins from resources on first launch.
 void installBundledContent();

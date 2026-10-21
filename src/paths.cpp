@@ -38,6 +38,21 @@ QString dataDir()
     return dir.absolutePath();
 }
 
+QString noFolderDir()
+{
+    // Try /orbital/no-folder if existing or writable
+    QDir rootDir(QStringLiteral("/orbital/no-folder"));
+    if (rootDir.exists())
+        return rootDir.absolutePath();
+    if (rootDir.mkpath(QStringLiteral(".")))
+        return rootDir.absolutePath();
+
+    // Default to user data dir: ~/.local/share/orbital/no-folder
+    QDir userDir(dataDir() + QStringLiteral("/no-folder"));
+    userDir.mkpath(QStringLiteral("."));
+    return userDir.absolutePath();
+}
+
 QString settingsFile()
 {
     return configDir() + QStringLiteral("/settings.json");

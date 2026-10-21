@@ -133,6 +133,7 @@ ApplicationWindow {
                 anchors.bottom: composerArea.top
                 width: parent.width
                 visible: window.chatting
+                onEditPromptRequested: prompt => composer.setText(prompt)
             }
 
             // Welcome

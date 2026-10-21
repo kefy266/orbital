@@ -23,6 +23,7 @@ struct SessionInfo
     QString id;
     QString title;
     qint64 updated = 0;
+    QString directory;
 };
 
 struct AgentInfo
@@ -80,6 +81,7 @@ public:
     virtual void listSessions(std::function<void(const QList<SessionInfo> &)> done) = 0;
     virtual void createSession(std::function<void(const QString &id, const QString &error)> done) = 0;
     virtual void deleteSession(const QString &id, Done done) = 0;
+    virtual void renameSession(const QString &id, const QString &title, Done done) = 0;
     virtual void loadHistory(const QString &id, std::function<void(const QJsonArray &items)> done) = 0;
 
     virtual void listModels(std::function<void(const QList<ModelChoice> &)> done) = 0;

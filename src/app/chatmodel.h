@@ -52,6 +52,8 @@ public:
 
     // Plain text of an assistant turn ending at row (for "copy").
     Q_INVOKABLE QString turnText(int row) const;
+    Q_INVOKABLE QString lastUserPrompt() const;
+    Q_INVOKABLE QString exportMarkdown(const QString &sessionTitle, const QString &projectName) const;
 
     static QVariantList splitMarkdown(const QString &markdown);
 
@@ -87,7 +89,7 @@ class SessionModel : public QAbstractListModel
 {
     Q_OBJECT
 public:
-    enum Role { IdRole = Qt::UserRole + 1, TitleRole, SectionRole, TimeRole };
+    enum Role { IdRole = Qt::UserRole + 1, TitleRole, SectionRole, TimeRole, DirectoryRole, ProjectNameRole };
 
     using QAbstractListModel::QAbstractListModel;
 
@@ -100,9 +102,12 @@ public:
         QString id;
         QString title;
         qint64 updated = 0;
+        QString directory;
     };
     void setRows(const QList<Row> &rows);
     QString titleOf(const QString &id) const;
+    QString directoryOf(const QString &id) const;
+    QList<Row> allRows() const { return m_rows; }
 
 private:
     QList<Row> m_rows;

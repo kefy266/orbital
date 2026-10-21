@@ -17,6 +17,8 @@
     <file>qml/Spinner.qml</file>
     <file>qml/SkillChip.qml</file>
     <file>qml/ConfirmDialog.qml</file>
+    <file>qml/RenameDialog.qml</file>
+    <file>qml/SponsorCard.qml</file>
     <file>qml/Sidebar.qml</file>
     <file>qml/ChatView.qml</file>
     <file>qml/CodeBlock.qml</file>

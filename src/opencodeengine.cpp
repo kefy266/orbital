@@ -533,14 +533,15 @@ void OpencodeEngine::handleEvent(const QString &type, const QJsonObject &p)
 
 void OpencodeEngine::listSessions(std::function<void(const QList<SessionInfo> &)> done)
 {
-    call("GET", QStringLiteral("/session"), {}, [this, done](const QJsonValue &data, const QString &) {
+    call("GET", QStringLiteral("/session"), {}, [done](const QJsonValue &data, const QString &) {
         QList<SessionInfo> out;
         for (const QJsonValue &v : data.toArray()) {
             const QJsonObject s = v.toObject();
-            if (s.contains(QStringLiteral("parentID")) || s.value(QStringLiteral("directory")).toString() != m_directory)
+            if (s.contains(QStringLiteral("parentID")))
                 continue;
             out << SessionInfo{s.value(QStringLiteral("id")).toString(), s.value(QStringLiteral("title")).toString(),
-                               qint64(s.value(QStringLiteral("time")).toObject().value(QStringLiteral("updated")).toDouble())};
+                               qint64(s.value(QStringLiteral("time")).toObject().value(QStringLiteral("updated")).toDouble()),
+                               s.value(QStringLiteral("directory")).toString()};
         }
         std::sort(out.begin(), out.end(), [](const SessionInfo &a, const SessionInfo &b) { return a.updated > b.updated; });
         done(out);
@@ -557,6 +558,17 @@ void OpencodeEngine::createSession(std::function<void(const QString &, const QSt
 void OpencodeEngine::deleteSession(const QString &id, Done done)
 {
     call("DELETE", QStringLiteral("/session/") + id, {}, [done](const QJsonValue &, const QString &error) { done(error); });
+}
+
+void OpencodeEngine::renameSession(const QString &id, const QString &title, Done done)
+{
+    call("PATCH", QStringLiteral("/session/") + id, QJsonObject{{QStringLiteral("title"), title}},
+         [this, done](const QJsonValue &, const QString &error) {
+             if (error.isEmpty())
+                 Q_EMIT sessionsChanged();
+             if (done)
+                 done(error);
+         });
 }
 
 void OpencodeEngine::loadHistory(const QString &id, std::function<void(const QJsonArray &)> done)

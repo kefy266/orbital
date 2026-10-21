@@ -1,8 +1,10 @@
 #include "chatmodel.h"
 
 #include <QDateTime>
+#include <QDir>
 #include <QJsonDocument>
 #include <QRegularExpression>
+#include "../paths.h"
 
 namespace {
 
@@ -369,11 +371,44 @@ QString ChatModel::turnText(int row) const
     return parts.join(QStringLiteral("\n\n"));
 }
 
+QString ChatModel::lastUserPrompt() const
+{
+    for (int i = m_items.size() - 1; i >= 0; --i) {
+        if (m_items.at(i).kind == QLatin1String("user"))
+            return m_items.at(i).text;
+    }
+    return {};
+}
+
+QString ChatModel::exportMarkdown(const QString &sessionTitle, const QString &projectName) const
+{
+    QString out = QStringLiteral("# %1\n\n_Proje: %2_\n\n---\n\n")
+                      .arg(sessionTitle.isEmpty() ? QStringLiteral("Orbital Sohbeti") : sessionTitle,
+                           projectName.isEmpty() ? QStringLiteral("Proje") : projectName);
+    for (const Item &it : m_items) {
+        if (it.kind == QLatin1String("user")) {
+            out += QStringLiteral("### 👤 Kullanıcı\n\n%1\n\n").arg(it.text);
+        } else if (it.kind == QLatin1String("text")) {
+            out += QStringLiteral("### 🤖 Orbital\n\n%1\n\n").arg(it.text);
+        } else if (it.kind == QLatin1String("tool")) {
+            out += QStringLiteral("> ⚙️ **Araç:** `%1` (%2)\n\n").arg(it.toolName, it.toolStatus);
+        } else if (it.kind == QLatin1String("error")) {
+            out += QStringLiteral("> ⚠️ **Hata:** %1\n\n").arg(it.text);
+        }
+    }
+    return out;
+}
+
 // ---------------------------------------------------------------- sessions
 
 QHash<int, QByteArray> SessionModel::roleNames() const
 {
-    return {{IdRole, "sessionId"}, {TitleRole, "title"}, {SectionRole, "section"}, {TimeRole, "time"}};
+    return {{IdRole, "sessionId"},
+            {TitleRole, "title"},
+            {SectionRole, "section"},
+            {TimeRole, "time"},
+            {DirectoryRole, "directory"},
+            {ProjectNameRole, "projectName"}};
 }
 
 QVariant SessionModel::data(const QModelIndex &index, int role) const
@@ -387,6 +422,13 @@ QVariant SessionModel::data(const QModelIndex &index, int role) const
         // The engine names untitled sessions "New session - <timestamp>".
         return r.title.isEmpty() || r.title.startsWith(QStringLiteral("New session - ")) ? QStringLiteral("Yeni sohbet") : r.title;
     case TimeRole: return QDateTime::fromMSecsSinceEpoch(r.updated).toString(QStringLiteral("dd.MM.yyyy HH:mm"));
+    case DirectoryRole: return r.directory;
+    case ProjectNameRole: {
+        if (r.directory.isEmpty() || r.directory == Paths::noFolderDir())
+            return QStringLiteral("Klasörsüz (no-folder)");
+        const QString name = QDir(r.directory).dirName();
+        return name.isEmpty() ? r.directory : name;
+    }
     case SectionRole: {
         const QDate d = QDateTime::fromMSecsSinceEpoch(r.updated).date();
         const QDate today = QDate::currentDate();
@@ -416,5 +458,13 @@ QString SessionModel::titleOf(const QString &id) const
     for (const Row &r : m_rows)
         if (r.id == id)
             return r.title;
+    return {};
+}
+
+QString SessionModel::directoryOf(const QString &id) const
+{
+    for (const Row &r : m_rows)
+        if (r.id == id)
+            return r.directory;
     return {};
 }

@@ -30,6 +30,9 @@ class AppController : public QObject
 
     Q_PROPERTY(QString projectName READ projectName NOTIFY projectChanged)
     Q_PROPERTY(QString projectPath READ projectPath NOTIFY projectChanged)
+    Q_PROPERTY(bool isNoFolder READ isNoFolder NOTIFY projectChanged)
+    Q_PROPERTY(QVariantList projects READ projects NOTIFY projectsChanged)
+    Q_PROPERTY(QString projectFilter READ projectFilter WRITE setProjectFilter NOTIFY projectFilterChanged)
 
     Q_PROPERTY(QVariantList models READ models NOTIFY modelsChanged)
     Q_PROPERTY(QString modelRef READ modelRef NOTIFY modelChanged)
@@ -48,6 +51,7 @@ class AppController : public QObject
     Q_PROPERTY(QVariantList actions READ actions NOTIFY actionsChanged)
     Q_PROPERTY(QVariantMap permission READ permission NOTIFY permissionChanged)
     Q_PROPERTY(QVariantMap question READ question NOTIFY questionChanged)
+    Q_PROPERTY(QStringList promptHistory READ promptHistory NOTIFY promptHistoryChanged)
     Q_PROPERTY(QString themeMode READ themeMode WRITE setThemeMode NOTIFY themeModeChanged)
     Q_PROPERTY(QVariantList storeItems READ storeItems NOTIFY storeChanged)
     Q_PROPERTY(bool storeLoading READ storeLoading NOTIFY storeChanged)
@@ -76,6 +80,7 @@ public:
     bool statusIsError() const { return m_statusIsError; }
     QString projectName() const;
     QString projectPath() const { return m_directory; }
+    bool isNoFolder() const;
     QVariantList models() const { return m_models; }
     QString modelRef() const;
     QString modelLabel() const;
@@ -102,6 +107,12 @@ public:
     Q_INVOKABLE void openSession(const QString &id);
     Q_INVOKABLE void deleteSession(const QString &id);
     Q_INVOKABLE void setProject(const QUrl &folder);
+    Q_INVOKABLE void openProjectPath(const QString &path);
+    Q_INVOKABLE void openNoFolderProject();
+    Q_INVOKABLE void removeRecentProject(const QString &path);
+    QVariantList projects() const;
+    QString projectFilter() const { return m_projectFilter; }
+    void setProjectFilter(const QString &filter);
     Q_INVOKABLE void switchEngine(const QString &id);
     Q_INVOKABLE void setModel(const QString &ref);
     Q_INVOKABLE void attachSkill(const QString &name);
@@ -109,6 +120,12 @@ public:
     Q_INVOKABLE void replyPermission(const QString &reply);
     Q_INVOKABLE void replyQuestion(const QVariantList &answers);
     Q_INVOKABLE void rejectQuestion();
+    Q_INVOKABLE void retryLastTurn();
+    Q_INVOKABLE void renameSession(const QString &id, const QString &newTitle);
+    Q_INVOKABLE void exportChatAsMarkdown();
+    Q_INVOKABLE QString formatDroppedUrl(const QUrl &url) const;
+    QStringList promptHistory() const { return m_promptHistory; }
+    Q_INVOKABLE void clearPromptHistory();
     Q_INVOKABLE void runAction(int index);
     Q_INVOKABLE void copyText(const QString &text);
     Q_INVOKABLE void openPath(const QString &path);
@@ -172,6 +189,8 @@ Q_SIGNALS:
     void engineChanged();
     void statusChanged();
     void projectChanged();
+    void projectsChanged();
+    void projectFilterChanged();
     void modelsChanged();
     void modelChanged();
     void agentsChanged();
@@ -184,6 +203,7 @@ Q_SIGNALS:
     void actionsChanged();
     void permissionChanged();
     void questionChanged();
+    void promptHistoryChanged();
     void themeModeChanged();
     void toast(const QString &message);
     void providerResult(const QString &id, bool ok, const QString &message);
@@ -216,6 +236,7 @@ private:
     bool m_settingsDirty = false;
 
     QString m_directory;
+    QString m_projectFilter = QStringLiteral("all");
     QString m_status;
     bool m_statusIsError = false;
     QVariantList m_models;
@@ -242,6 +263,10 @@ private:
     QString storeUrl() const;
     void fetchStoreFile(const QString &path, std::function<void(const QByteArray &, const QString &)> done);
     QMetaObject::Connection m_mcpConnection;
+
+    QStringList m_promptHistory;
+    void loadPromptHistory();
+    void savePromptHistory();
 
     bool m_updateAvailable = false;
     QString m_updateVersion;

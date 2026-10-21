@@ -76,10 +76,9 @@ void NativeEngine::listSessions(std::function<void(const QList<SessionInfo> &)> 
         if (!f.open(QIODevice::ReadOnly))
             continue;
         const QJsonObject s = QJsonDocument::fromJson(f.readAll()).object();
-        if (s.value(QStringLiteral("directory")).toString() != m_directory)
-            continue;
         out << SessionInfo{s.value(QStringLiteral("id")).toString(), s.value(QStringLiteral("title")).toString(),
-                           qint64(s.value(QStringLiteral("updated")).toDouble())};
+                           qint64(s.value(QStringLiteral("updated")).toDouble()),
+                           s.value(QStringLiteral("directory")).toString()};
     }
     std::sort(out.begin(), out.end(), [](const SessionInfo &a, const SessionInfo &b) { return a.updated > b.updated; });
     done(out);
@@ -104,6 +103,20 @@ void NativeEngine::deleteSession(const QString &id, Done done)
     QFile::remove(sessionPath(id));
     Q_EMIT sessionsChanged();
     done({});
+}
+
+void NativeEngine::renameSession(const QString &id, const QString &title, Done done)
+{
+    QJsonObject s = loadSession(id);
+    if (s.isEmpty()) {
+        if (done) done(QStringLiteral("Oturum bulunamadı"));
+        return;
+    }
+    s.insert(QStringLiteral("title"), title);
+    s.insert(QStringLiteral("updated"), QDateTime::currentMSecsSinceEpoch());
+    saveSession(s);
+    Q_EMIT sessionsChanged();
+    if (done) done({});
 }
 
 void NativeEngine::loadHistory(const QString &id, std::function<void(const QJsonArray &)> done)
