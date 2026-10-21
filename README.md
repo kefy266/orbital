@@ -40,6 +40,11 @@ resources/skills|plugins/  ilk açılışta kurulan örnekler
 
 ORBITAL Cloud motoru, [opencode](https://github.com/anomalyco/opencode) sunucusunu Orbital'in kendi klasörüne (`~/.local/share/orbital/engine`) kurar ve ayrı ayarlarla çalıştırır. Bilgisayarındaki opencode kurulumuna dokunmaz.
 
+> [!NOTE]
+> **Bağımsızlık notu:** Orbital, OpenCode ekibi tarafından geliştirilmemiştir ve OpenCode ile hiçbir şekilde bağlantılı değildir. Orbital, açık kaynak opencode projesini altyapı olarak kullanan bağımsız bir projedir.
+>
+> *Orbital is not built by the OpenCode team and is not affiliated with OpenCode in any way. It is an independent project that uses the open-source opencode project as part of its infrastructure.*
+
 ## Dosyalar
 
 | Yol | İçerik |
