@@ -39,7 +39,7 @@ inline Command script(const QString &path)
             return {QStringLiteral("powershell.exe"),
                     {QStringLiteral("-NoProfile"), QStringLiteral("-NonInteractive"),
                      QStringLiteral("-ExecutionPolicy"), QStringLiteral("Bypass"),
-                     QStringLiteral("-File"), ps1}};
+                     QStringLiteral("-File"), QDir::toNativeSeparators(ps1)}};
         }
         // If it's check.sh, run regex validation directly via PowerShell without requiring Git Bash
         if (fi.fileName() == QLatin1String("check.sh")) {
@@ -67,7 +67,7 @@ inline Command script(const QString &path)
         return {QStringLiteral("powershell.exe"),
                 {QStringLiteral("-NoProfile"), QStringLiteral("-NonInteractive"),
                  QStringLiteral("-ExecutionPolicy"), QStringLiteral("Bypass"),
-                 QStringLiteral("-File"), path}};
+                 QStringLiteral("-File"), QDir::toNativeSeparators(path)}};
     if (suffix == QLatin1String("py"))
         return {QStringLiteral("python"), {path}};
 #endif

@@ -171,6 +171,7 @@
       ],
       "files": [
         "plugin.json",
+        "tools/sysinfo.ps1",
         "tools/sysinfo.sh"
       ],
       "runsCode": true
@@ -186,6 +187,7 @@
         "güvenlik"
       ],
       "files": [
+        "hooks/check.ps1",
         "hooks/check.sh",
         "plugin.json"
       ],

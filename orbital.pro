@@ -50,7 +50,7 @@ win32 {
     TARGET = Orbital
     QMAKE_TARGET_DESCRIPTION = Orbital
     QMAKE_TARGET_PRODUCT = Orbital
-    VERSION = 0.3.0
+    VERSION = 0.3.1
 }
 macx {
     TARGET = Orbital
