@@ -46,6 +46,13 @@ struct PermissionRequest
     QString detail;  // e.g. the command or file path
 };
 
+struct QuestionRequest
+{
+    QString sessionId;
+    QString id;
+    QJsonArray questions;
+};
+
 // What Orbital's UI talks to. Two implementations:
 //   NativeEngine   — Orbital's own agent loop, talks to model APIs directly
 //   OpencodeEngine — an Orbital-managed, isolated opencode server
@@ -86,6 +93,8 @@ public:
                             const QString &modelRef, const QString &agent) = 0;
     virtual void abort(const QString &sessionId) = 0;
     virtual void replyPermission(const PermissionRequest &request, const QString &reply) = 0; // once|always|reject
+    virtual void replyQuestion(const QString &requestId, const QJsonArray &answers) = 0;
+    virtual void rejectQuestion(const QString &requestId) = 0;
 
 Q_SIGNALS:
     void ready();
@@ -100,6 +109,8 @@ Q_SIGNALS:
     void busyChanged(const QString &sessionId, bool busy);
     void errorOccurred(const QString &sessionId, const QString &message);
     void permissionRequested(const PermissionRequest &request);
+    void questionRequested(const QuestionRequest &request);
+    void questionDismissed(const QString &requestId);
     void usageUpdated(const QString &sessionId, int inputTokens, int outputTokens, double cost);
     void sessionsChanged();
 };

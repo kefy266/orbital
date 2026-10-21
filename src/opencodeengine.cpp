@@ -439,7 +439,10 @@ void OpencodeEngine::parseEvents()
         if (payload.isEmpty())
             continue;
         const QJsonObject e = QJsonDocument::fromJson(payload).object();
-        handleEvent(e.value(QStringLiteral("type")).toString(), e.value(QStringLiteral("properties")).toObject());
+        QJsonObject props = e.value(QStringLiteral("properties")).toObject();
+        if (props.isEmpty() && e.contains(QStringLiteral("data")))
+            props = e.value(QStringLiteral("data")).toObject();
+        handleEvent(e.value(QStringLiteral("type")).toString(), props);
     }
 }
 
@@ -512,6 +515,14 @@ void OpencodeEngine::handleEvent(const QString &type, const QJsonObject &p)
             detail << v.toString();
         Q_EMIT permissionRequested(PermissionRequest{sid, p.value(QStringLiteral("id")).toString(),
                                                    p.value(QStringLiteral("permission")).toString(), detail.join(QStringLiteral(", "))});
+    } else if (type == QLatin1String("question.asked")) {
+        const QString qid = p.value(QStringLiteral("id")).toString();
+        const QJsonArray questions = p.value(QStringLiteral("questions")).toArray();
+        Q_EMIT questionRequested(QuestionRequest{sid, qid, questions});
+    } else if (type == QLatin1String("question.replied") || type == QLatin1String("question.rejected")) {
+        const QString qid = p.contains(QStringLiteral("requestID")) ? p.value(QStringLiteral("requestID")).toString()
+                                                                    : p.value(QStringLiteral("id")).toString();
+        Q_EMIT questionDismissed(qid);
     } else if (type == QLatin1String("session.created") || type == QLatin1String("session.deleted")
                || (type == QLatin1String("session.updated"))) {
         Q_EMIT sessionsChanged();
@@ -686,4 +697,14 @@ void OpencodeEngine::abort(const QString &sessionId)
 void OpencodeEngine::replyPermission(const PermissionRequest &request, const QString &reply)
 {
     call("POST", QStringLiteral("/permission/%1/reply").arg(request.id), QJsonObject{{QStringLiteral("reply"), reply}}, {});
+}
+
+void OpencodeEngine::replyQuestion(const QString &requestId, const QJsonArray &answers)
+{
+    call("POST", QStringLiteral("/question/%1/reply").arg(requestId), QJsonObject{{QStringLiteral("answers"), answers}}, {});
+}
+
+void OpencodeEngine::rejectQuestion(const QString &requestId)
+{
+    call("POST", QStringLiteral("/question/%1/reject").arg(requestId), QJsonObject{}, {});
 }

@@ -23,6 +23,7 @@
     <file>qml/Composer.qml</file>
     <file>qml/ModelPicker.qml</file>
     <file>qml/PermissionDialog.qml</file>
+    <file>qml/QuestionDialog.qml</file>
     <file>qml/SettingsDialog.qml</file>
     <file>qml/Toast.qml</file>
     <file>qml/StoreDialog.qml</file>

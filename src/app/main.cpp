@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
     QGuiApplication app(argc, argv);
     QGuiApplication::setApplicationName(QStringLiteral("Orbital"));
     QGuiApplication::setOrganizationName(QStringLiteral("Orbital"));
-    QGuiApplication::setApplicationVersion(QStringLiteral("0.3.1"));
+    QGuiApplication::setApplicationVersion(QStringLiteral("0.3.2"));
     QGuiApplication::setDesktopFileName(QStringLiteral("orbital"));
     QGuiApplication::setWindowIcon(QIcon(QStringLiteral(":/theme/orbital.svg")));
     if (QFontDatabase::families().contains(QStringLiteral("Inter")))

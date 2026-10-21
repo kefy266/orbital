@@ -47,6 +47,7 @@ class AppController : public QObject
     Q_PROPERTY(QVariantList commands READ commands NOTIFY commandsChanged)
     Q_PROPERTY(QVariantList actions READ actions NOTIFY actionsChanged)
     Q_PROPERTY(QVariantMap permission READ permission NOTIFY permissionChanged)
+    Q_PROPERTY(QVariantMap question READ question NOTIFY questionChanged)
     Q_PROPERTY(QString themeMode READ themeMode WRITE setThemeMode NOTIFY themeModeChanged)
     Q_PROPERTY(QVariantList storeItems READ storeItems NOTIFY storeChanged)
     Q_PROPERTY(bool storeLoading READ storeLoading NOTIFY storeChanged)
@@ -90,6 +91,7 @@ public:
     QVariantList commands() const { return m_commands; }
     QVariantList actions() const;
     QVariantMap permission() const { return m_permission; }
+    QVariantMap question() const { return m_question; }
     QString themeMode() const;
     void setThemeMode(const QString &mode);
 
@@ -105,6 +107,8 @@ public:
     Q_INVOKABLE void attachSkill(const QString &name);
     Q_INVOKABLE void detachSkill(const QString &name);
     Q_INVOKABLE void replyPermission(const QString &reply);
+    Q_INVOKABLE void replyQuestion(const QVariantList &answers);
+    Q_INVOKABLE void rejectQuestion();
     Q_INVOKABLE void runAction(int index);
     Q_INVOKABLE void copyText(const QString &text);
     Q_INVOKABLE void openPath(const QString &path);
@@ -179,6 +183,7 @@ Q_SIGNALS:
     void commandsChanged();
     void actionsChanged();
     void permissionChanged();
+    void questionChanged();
     void themeModeChanged();
     void toast(const QString &message);
     void providerResult(const QString &id, bool ok, const QString &message);
@@ -226,6 +231,8 @@ private:
     QVariantList m_commands;
     QVariantMap m_permission;
     QList<PermissionRequest> m_permissionQueue;
+    QVariantMap m_question;
+    QList<QuestionRequest> m_questionQueue;
     QTimer m_sessionRefresh;
     QNetworkAccessManager *m_nam;
     QVariantList m_store;

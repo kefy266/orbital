@@ -518,6 +518,14 @@ void NativeEngine::replyPermission(const PermissionRequest &request, const QStri
     executeTool(run, call);
 }
 
+void NativeEngine::replyQuestion(const QString &, const QJsonArray &)
+{
+}
+
+void NativeEngine::rejectQuestion(const QString &)
+{
+}
+
 void NativeEngine::executeTool(Run *run, const QJsonObject &call)
 {
     const QString sid = run->sessionId;

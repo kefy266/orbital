@@ -261,6 +261,7 @@ ApplicationWindow {
         onTriggered: { ids.forEach(id => App.installStoreItem(id)); ids = [] }
     }
     PermissionDialog {}
+    QuestionDialog {}
 
     Component.onCompleted: {
         composer.focusInput()

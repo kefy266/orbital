@@ -1,5 +1,5 @@
 cask "orbital" do
-  version "0.3.1"
+  version "0.3.2"
   sha256 :no_check
 
   url "https://github.com/kefy266/orbital/releases/download/v#{version}/Orbital-macos-arm64.dmg"

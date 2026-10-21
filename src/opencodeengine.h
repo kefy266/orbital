@@ -47,6 +47,8 @@ public:
                     const QString &agent) override;
     void abort(const QString &sessionId) override;
     void replyPermission(const PermissionRequest &request, const QString &reply) override;
+    void replyQuestion(const QString &requestId, const QJsonArray &answers) override;
+    void rejectQuestion(const QString &requestId) override;
 
     static QString version();
     static QString binaryPath();

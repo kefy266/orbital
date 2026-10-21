@@ -192,6 +192,8 @@ void AppController::switchEngine(const QString &id)
     m_modelRef.clear();
     m_permissionQueue.clear();
     m_permission.clear();
+    m_questionQueue.clear();
+    m_question.clear();
     m_chat->clear();
     m_sessions->setRows({});
     setThinking(false);
@@ -204,6 +206,7 @@ void AppController::switchEngine(const QString &id)
     Q_EMIT agentsChanged();
     Q_EMIT usageChanged();
     Q_EMIT permissionChanged();
+    Q_EMIT questionChanged();
 
     QJsonObject s = Paths::loadSettings();
     s.insert(QStringLiteral("engine"), m_engine->id());
@@ -270,6 +273,34 @@ void AppController::connectEngine()
         if (m_permission.isEmpty()) {
             m_permission = QVariantMap{{QStringLiteral("tool"), r.title}, {QStringLiteral("detail"), r.detail}};
             Q_EMIT permissionChanged();
+        }
+    });
+    connect(e, &Engine::questionRequested, this, [this](const QuestionRequest &r) {
+        m_questionQueue << r;
+        if (m_question.isEmpty()) {
+            m_question = QVariantMap{{QStringLiteral("id"), r.id},
+                                     {QStringLiteral("sessionId"), r.sessionId},
+                                     {QStringLiteral("questions"), r.questions.toVariantList()}};
+            Q_EMIT questionChanged();
+        }
+    });
+    connect(e, &Engine::questionDismissed, this, [this](const QString &requestId) {
+        for (int i = 0; i < m_questionQueue.size(); ++i) {
+            if (m_questionQueue.at(i).id == requestId) {
+                m_questionQueue.removeAt(i);
+                break;
+            }
+        }
+        if (m_question.value(QStringLiteral("id")).toString() == requestId) {
+            if (m_questionQueue.isEmpty()) {
+                m_question.clear();
+            } else {
+                const QuestionRequest &n = m_questionQueue.first();
+                m_question = QVariantMap{{QStringLiteral("id"), n.id},
+                                         {QStringLiteral("sessionId"), n.sessionId},
+                                         {QStringLiteral("questions"), n.questions.toVariantList()}};
+            }
+            Q_EMIT questionChanged();
         }
     });
     connect(e, &Engine::usageUpdated, this, [this](const QString &sid, int in, int out, double cost) {
@@ -456,10 +487,13 @@ void AppController::newChat()
     m_sessionTitle.clear();
     m_chat->clear();
     m_usage.clear();
+    m_questionQueue.clear();
+    m_question.clear();
     setThinking(false);
     Q_EMIT sessionChanged();
     Q_EMIT busyChanged();
     Q_EMIT usageChanged();
+    Q_EMIT questionChanged();
 }
 
 void AppController::openSession(const QString &id)
@@ -470,10 +504,13 @@ void AppController::openSession(const QString &id)
     m_sessionTitle = m_sessions->titleOf(id);
     m_usage.clear();
     m_chat->clear();
+    m_questionQueue.clear();
+    m_question.clear();
     setThinking(false);
     Q_EMIT sessionChanged();
     Q_EMIT busyChanged();
     Q_EMIT usageChanged();
+    Q_EMIT questionChanged();
     m_engine->loadHistory(id, [this, id](const QJsonArray &items) {
         if (id != m_sessionId)
             return;
@@ -608,6 +645,60 @@ void AppController::replyPermission(const QString &reply)
     }
     Q_EMIT permissionChanged();
 }
+
+void AppController::replyQuestion(const QVariantList &answers)
+{
+    if (m_questionQueue.isEmpty())
+        return;
+    const QuestionRequest r = m_questionQueue.takeFirst();
+    QJsonArray answersArray;
+    for (const QVariant &ans : answers) {
+        if (ans.userType() == QMetaType::QVariantList || ans.canConvert<QVariantList>()) {
+            QJsonArray sub;
+            for (const QVariant &item : ans.toList()) {
+                const QString s = item.toString().trimmed();
+                if (!s.isEmpty())
+                    sub.append(s);
+            }
+            answersArray.append(sub);
+        } else {
+            const QString s = ans.toString().trimmed();
+            answersArray.append(s.isEmpty() ? QJsonArray{} : QJsonArray{s});
+        }
+    }
+    if (m_engine)
+        m_engine->replyQuestion(r.id, answersArray);
+
+    if (m_questionQueue.isEmpty()) {
+        m_question.clear();
+    } else {
+        const QuestionRequest &n = m_questionQueue.first();
+        m_question = QVariantMap{{QStringLiteral("id"), n.id},
+                                 {QStringLiteral("sessionId"), n.sessionId},
+                                 {QStringLiteral("questions"), n.questions.toVariantList()}};
+    }
+    Q_EMIT questionChanged();
+}
+
+void AppController::rejectQuestion()
+{
+    if (m_questionQueue.isEmpty())
+        return;
+    const QuestionRequest r = m_questionQueue.takeFirst();
+    if (m_engine)
+        m_engine->rejectQuestion(r.id);
+
+    if (m_questionQueue.isEmpty()) {
+        m_question.clear();
+    } else {
+        const QuestionRequest &n = m_questionQueue.first();
+        m_question = QVariantMap{{QStringLiteral("id"), n.id},
+                                 {QStringLiteral("sessionId"), n.sessionId},
+                                 {QStringLiteral("questions"), n.questions.toVariantList()}};
+    }
+    Q_EMIT questionChanged();
+}
+
 
 void AppController::runAction(int index)
 {
@@ -1187,7 +1278,7 @@ void AppController::applySettings()
 QString AppController::appVersion() const
 {
     const QString ver = QCoreApplication::applicationVersion();
-    return ver.isEmpty() ? QStringLiteral("0.3.1") : ver;
+    return ver.isEmpty() ? QStringLiteral("0.3.2") : ver;
 }
 
 void AppController::checkForUpdates(bool silent)

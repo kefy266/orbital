@@ -38,6 +38,19 @@ int main(int argc, char **argv)
         out(QStringLiteral("\n[permission %1] %2 -> once").arg(r.title, r.detail));
         e->replyPermission(r, QStringLiteral("once"));
     });
+    QObject::connect(e, &Engine::questionRequested, [e](const QuestionRequest &r) {
+        out(QStringLiteral("\n[question %1] %2 questions").arg(r.id).arg(r.questions.size()));
+        QJsonArray answers;
+        for (const QJsonValue &qv : r.questions) {
+            const QJsonObject q = qv.toObject();
+            const QJsonArray options = q.value(QStringLiteral("options")).toArray();
+            if (!options.isEmpty())
+                answers.append(QJsonArray{options.first().toObject().value(QStringLiteral("label")).toString()});
+            else
+                answers.append(QJsonArray{QStringLiteral("default")});
+        }
+        e->replyQuestion(r.id, answers);
+    });
     QObject::connect(e, &Engine::errorOccurred, [](const QString &, const QString &m) { out("\n[error] " + m); });
     QObject::connect(e, &Engine::busyChanged, [&](const QString &sid, bool busy) {
         out(QStringLiteral("\n[busy %1]").arg(busy));
