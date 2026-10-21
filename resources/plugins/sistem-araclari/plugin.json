@@ -1,0 +1,16 @@
+{
+  "id": "sistem-araclari",
+  "name": "Sistem Araçları",
+  "version": "1.0.0",
+  "author": "Orbital",
+  "description": "Betik tabanlı araç örneği: model sistem bilgisini bir araçla sorgulayabilir. Kendi araçlarını yazmak için şablon olarak kullan.",
+  "tools": [
+    {
+      "name": "sistem_bilgisi",
+      "description": "Return OS, kernel, CPU, memory and disk usage of the user's machine.",
+      "parameters": { "type": "object", "properties": {}, "required": [] },
+      "run": "tools/sysinfo.sh",
+      "timeout": 20
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+<qresource prefix="/">
+    <file alias="theme/orbital.svg">orbital.svg</file>
+    <file>icons.json</file>
+    <file>qml/qmldir</file>
+    <file>qml/Main.qml</file>
+    <file>qml/Theme.qml</file>
+    <file>qml/Icon.qml</file>
+    <file>qml/IconButton.qml</file>
+    <file>qml/OButton.qml</file>
+    <file>qml/OTextField.qml</file>
+    <file>qml/OSwitch.qml</file>
+    <file>qml/OMenu.qml</file>
+    <file>qml/OMenuItem.qml</file>
+    <file>qml/Segmented.qml</file>
+    <file>qml/Spinner.qml</file>
+    <file>qml/SkillChip.qml</file>
+    <file>qml/ConfirmDialog.qml</file>
+    <file>qml/Sidebar.qml</file>
+    <file>qml/ChatView.qml</file>
+    <file>qml/CodeBlock.qml</file>
+    <file>qml/Composer.qml</file>
+    <file>qml/ModelPicker.qml</file>
+    <file>qml/PermissionDialog.qml</file>
+    <file>qml/SettingsDialog.qml</file>
+    <file>qml/Toast.qml</file>
+    <file alias="bundled/skills/kod-inceleme/SKILL.md">skills/kod-inceleme/SKILL.md</file>
+    <file alias="bundled/skills/commit-mesaji/SKILL.md">skills/commit-mesaji/SKILL.md</file>
+    <file alias="bundled/skills/turkce-yanit/SKILL.md">skills/turkce-yanit/SKILL.md</file>
+    <file alias="bundled/plugins/git-araclari/plugin.json">plugins/git-araclari/plugin.json</file>
+    <file alias="bundled/plugins/git-araclari/skills/git-akisi/SKILL.md">plugins/git-araclari/skills/git-akisi/SKILL.md</file>
+    <file alias="bundled/plugins/sistem-araclari/plugin.json">plugins/sistem-araclari/plugin.json</file>
+    <file alias="bundled/plugins/sistem-araclari/tools/sysinfo.sh">plugins/sistem-araclari/tools/sysinfo.sh</file>
+    <file alias="bundled/plugins/gizli-anahtar-korumasi/plugin.json">plugins/gizli-anahtar-korumasi/plugin.json</file>
+    <file alias="bundled/plugins/gizli-anahtar-korumasi/hooks/check.sh">plugins/gizli-anahtar-korumasi/hooks/check.sh</file>
+    <file alias="bundled/plugins/web-fetch-mcp/plugin.json">plugins/web-fetch-mcp/plugin.json</file>
+</qresource>
+</RCC>

@@ -1,0 +1,4 @@
+build/
+*.mk
+.qmake.stash
+tests/.qmake.stash
