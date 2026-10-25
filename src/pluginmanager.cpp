@@ -293,6 +293,19 @@ QStringList PluginManager::opencodePlugins() const
     return out;
 }
 
+QJsonObject PluginManager::permissions() const
+{
+    QJsonObject out;
+    for (const Plugin &p : m_plugins) {
+        if (!p.enabled)
+            continue;
+        const QJsonObject perms = p.manifest.value(QStringLiteral("permissions")).toObject();
+        for (auto it = perms.begin(); it != perms.end(); ++it)
+            out.insert(it.key(), it.value());
+    }
+    return out;
+}
+
 bool PluginManager::runBeforePrompt(QString *text, const QString &sessionId, const QString &directory,
                                     QString *reason) const
 {

@@ -42,5 +42,7 @@
     <file alias="bundled/plugins/gizli-anahtar-korumasi/hooks/check.sh">plugins/gizli-anahtar-korumasi/hooks/check.sh</file>
     <file alias="bundled/plugins/gizli-anahtar-korumasi/hooks/check.ps1">plugins/gizli-anahtar-korumasi/hooks/check.ps1</file>
     <file alias="bundled/plugins/web-fetch-mcp/plugin.json">plugins/web-fetch-mcp/plugin.json</file>
+    <file alias="bundled/plugins/oto-mod/plugin.json">plugins/oto-mod/plugin.json</file>
+    <file alias="bundled/plugins/oto-mod/kurallar.md">plugins/oto-mod/kurallar.md</file>
 </qresource>
 </RCC>

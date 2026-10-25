@@ -196,7 +196,12 @@ void OpencodeEngine::buildOverlay(std::function<void(const QByteArray &)> done)
         if (!instructions.isEmpty())
             overlay.insert(QStringLiteral("instructions"), QJsonArray::fromStringList(instructions));
         // Orbital's per-tool permission settings, in the engine's vocabulary.
-        const QJsonObject perms = Config::raw().value(QStringLiteral("permissions")).toObject();
+        QJsonObject perms = Config::raw().value(QStringLiteral("permissions")).toObject();
+        if (m_plugins) {
+            const QJsonObject pluginPerms = m_plugins->permissions();
+            for (auto it = pluginPerms.begin(); it != pluginPerms.end(); ++it)
+                perms.insert(it.key(), it.value());
+        }
         if (!perms.isEmpty()) {
             const auto policy = [&perms](const QString &tool) {
                 const QString v = perms.value(tool).toString(perms.value(QStringLiteral("*")).toString(QStringLiteral("ask")));

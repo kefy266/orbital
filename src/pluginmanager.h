@@ -64,6 +64,7 @@ public:
     QList<QPair<QString, QJsonObject>> scriptTools() const; // (plugin dir, tool def)
     QStringList instructionFiles() const;
     QStringList opencodePlugins() const;
+    QJsonObject permissions() const;
 
     // Runs all beforePrompt hooks in order. Returns false (with reason) if a hook blocks.
     bool runBeforePrompt(QString *text, const QString &sessionId, const QString &directory, QString *reason) const;

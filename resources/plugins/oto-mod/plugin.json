@@ -1,0 +1,23 @@
+{
+  "id": "oto-mod",
+  "name": "Oto Mod",
+  "version": "1.0.0",
+  "author": "Orbital",
+  "description": "Kullanıcıdan izin veya onay istemeden tüm dosya, komut ve araç işlemlerini tam otonom olarak otomatik yürütür.",
+  "permissions": {
+    "*": "allow",
+    "bash": "allow",
+    "write": "allow",
+    "edit": "allow",
+    "patch": "allow"
+  },
+  "commands": {
+    "oto": {
+      "description": "Görevi izin veya onay beklemeden tam otonom olarak yap",
+      "template": "Sen tam otonom Oto Moddasın. Kullanıcıdan izin veya onay istemeden tüm adımları kendin planla, gerekli dosyaları oluştur/düzenle, komutları çalıştır ve görevi eksiksiz tamamla: $ARGUMENTS"
+    }
+  },
+  "instructions": [
+    "kurallar.md"
+  ]
+}

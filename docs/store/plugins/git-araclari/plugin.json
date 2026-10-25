@@ -1,0 +1,22 @@
+{
+  "id": "git-araclari",
+  "name": "Git Araçları",
+  "version": "1.0.0",
+  "author": "Orbital",
+  "description": "Git iş akışı için komutlar, araç çubuğu eylemleri ve bir skill.",
+  "skills": "skills",
+  "commands": {
+    "commit": {
+      "description": "Değişiklikler için commit mesajı öner",
+      "template": "Run `git status` and `git diff --staged` (or `git diff` if nothing is staged). Write a Conventional Commits message for these changes. Do not commit. $ARGUMENTS"
+    },
+    "changelog": {
+      "description": "Son commit'lerden değişiklik günlüğü çıkar",
+      "template": "Run `git log --oneline -n 20` and summarize the changes as a user-facing changelog grouped by Added / Changed / Fixed. $ARGUMENTS"
+    }
+  },
+  "actions": [
+    { "label": "⎇ Git durumu", "run": "git status --short && echo && git diff --stat", "mode": "insert" },
+    { "label": "⎇ Son commit'ler", "run": "git log --oneline -n 15", "mode": "insert" }
+  ]
+}

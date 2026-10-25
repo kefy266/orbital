@@ -1,0 +1,11 @@
+{
+  "id": "web-fetch-mcp",
+  "name": "Web Fetch (MCP)",
+  "version": "1.0.0",
+  "author": "Orbital",
+  "description": "MCP eklentisi örneği: modelin web sayfalarını okumasını sağlar. 'uvx' (uv) gerektirir; etkinleştirmeden önce kur.",
+  "enabledByDefault": false,
+  "mcp": {
+    "fetch": { "type": "local", "command": ["uvx", "mcp-server-fetch"] }
+  }
+}

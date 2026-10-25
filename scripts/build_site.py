@@ -4,6 +4,7 @@ filling the store showcase from store/index.json."""
 import html
 import json
 import pathlib
+import shutil
 
 root = pathlib.Path(__file__).resolve().parent.parent
 items = json.loads((root / "store" / "index.json").read_text(encoding="utf-8"))["items"]
@@ -30,3 +31,10 @@ template = (root / "docs" / "template.html").read_text(encoding="utf-8")
 out = template.replace("{{STORE_CARDS}}", "\n".join(cards)).replace("{{STORE_COUNT}}", str(len(items)))
 (root / "docs" / "index.html").write_text(out, encoding="utf-8")
 print(f"docs/index.html: {len(items)} store items")
+
+# Sync store catalog to docs/store for GitHub Pages hosting
+docs_store = root / "docs" / "store"
+if docs_store.exists():
+    shutil.rmtree(docs_store)
+shutil.copytree(root / "store", docs_store)
+print(f"docs/store: synced {len(items)} items to GitHub Pages")

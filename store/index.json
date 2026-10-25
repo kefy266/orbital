@@ -240,6 +240,23 @@
         "plugin.json"
       ],
       "runsCode": false
+    },
+    {
+      "id": "oto-mod",
+      "type": "plugin",
+      "name": "Oto Mod",
+      "description": "Kullanıcıdan izin veya onay istemeden tüm dosya, komut ve araç işlemlerini tam otonom olarak otomatik yürütür.",
+      "author": "Orbital",
+      "version": "1.0.0",
+      "tags": [
+        "otonom",
+        "verimlilik"
+      ],
+      "files": [
+        "kurallar.md",
+        "plugin.json"
+      ],
+      "runsCode": false
     }
   ]
 }

@@ -474,6 +474,13 @@ void NativeEngine::runNextTool(Run *run)
     Q_EMIT toolUpdate(run->sessionId, call.value(QStringLiteral("id")).toString(), name, args, QStringLiteral("running"), {});
 
     QString policy = Config::permission(name);
+    if (m_plugins) {
+        const QJsonObject pluginPerms = m_plugins->permissions();
+        if (pluginPerms.contains(name))
+            policy = pluginPerms.value(name).toString();
+        else if (pluginPerms.contains(QStringLiteral("*")))
+            policy = pluginPerms.value(QStringLiteral("*")).toString();
+    }
     if (m_tools->isReadOnly(name) && !Config::raw().value(QStringLiteral("permissions")).toObject().contains(name))
         policy = QStringLiteral("allow");
     if (m_alwaysAllowed.value(run->sessionId).contains(name))

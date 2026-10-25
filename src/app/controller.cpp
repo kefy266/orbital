@@ -1306,7 +1306,7 @@ QString AppController::storeUrl() const
     if (!env.isEmpty())
         return env;
     return Config::raw().value(QStringLiteral("storeUrl"))
-        .toString(QStringLiteral("https://raw.githubusercontent.com/kefy266/orbital/main/store"));
+        .toString(QStringLiteral("https://kefy266.github.io/orbital/store"));
 }
 
 void AppController::fetchStoreFile(const QString &path, std::function<void(const QByteArray &, const QString &)> done)

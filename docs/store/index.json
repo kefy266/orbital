@@ -1,0 +1,262 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "kod-inceleme",
+      "type": "skill",
+      "name": "Kod İnceleme",
+      "description": "Hataları, riskleri ve eksik testleri önem sırasına göre raporlar.",
+      "author": "Orbital",
+      "version": "1.0.0",
+      "tags": [
+        "kalite"
+      ],
+      "files": [
+        "SKILL.md"
+      ]
+    },
+    {
+      "id": "commit-mesaji",
+      "type": "skill",
+      "name": "Commit Mesajı",
+      "description": "Değişikliklerden Conventional Commits biçiminde mesaj önerir.",
+      "author": "Orbital",
+      "version": "1.0.0",
+      "tags": [
+        "git"
+      ],
+      "files": [
+        "SKILL.md"
+      ]
+    },
+    {
+      "id": "turkce-yanit",
+      "type": "skill",
+      "name": "Türkçe Yanıt",
+      "description": "Tüm açıklamaları akıcı Türkçe ile yazar.",
+      "author": "Orbital",
+      "version": "1.0.0",
+      "tags": [
+        "dil"
+      ],
+      "files": [
+        "SKILL.md"
+      ]
+    },
+    {
+      "id": "test-yazimi",
+      "type": "skill",
+      "name": "Test Yazımı",
+      "description": "Projenin test çatısına uygun, anlamlı birim testleri yazar.",
+      "author": "Orbital",
+      "version": "1.0.0",
+      "tags": [
+        "test",
+        "kalite"
+      ],
+      "files": [
+        "SKILL.md"
+      ]
+    },
+    {
+      "id": "hata-ayiklama",
+      "type": "skill",
+      "name": "Hata Ayıklama",
+      "description": "Hatayı yeniden üretir, kök nedeni bulur ve en küçük düzeltmeyi yapar.",
+      "author": "Orbital",
+      "version": "1.0.0",
+      "tags": [
+        "hata"
+      ],
+      "files": [
+        "SKILL.md"
+      ]
+    },
+    {
+      "id": "refactor",
+      "type": "skill",
+      "name": "Güvenli Refactor",
+      "description": "Davranışı değiştirmeden kodu küçük, doğrulanmış adımlarla iyileştirir.",
+      "author": "Orbital",
+      "version": "1.0.0",
+      "tags": [
+        "kalite"
+      ],
+      "files": [
+        "SKILL.md"
+      ]
+    },
+    {
+      "id": "dokumantasyon",
+      "type": "skill",
+      "name": "Dokümantasyon",
+      "description": "README, kullanım kılavuzu ve kod içi açıklamaları yazar.",
+      "author": "Orbital",
+      "version": "1.0.0",
+      "tags": [
+        "belge"
+      ],
+      "files": [
+        "SKILL.md"
+      ]
+    },
+    {
+      "id": "guvenlik-incelemesi",
+      "type": "skill",
+      "name": "Güvenlik İncelemesi",
+      "description": "Enjeksiyon, kimlik doğrulama, sır sızıntısı gibi açıkları arar.",
+      "author": "Orbital",
+      "version": "1.0.0",
+      "tags": [
+        "güvenlik",
+        "kalite"
+      ],
+      "files": [
+        "SKILL.md"
+      ]
+    },
+    {
+      "id": "sql-uzmani",
+      "type": "skill",
+      "name": "SQL Uzmanı",
+      "description": "Doğru, okunaklı ve hızlı SQL sorguları yazar; indeks önerir.",
+      "author": "Orbital",
+      "version": "1.0.0",
+      "tags": [
+        "veritabanı"
+      ],
+      "files": [
+        "SKILL.md"
+      ]
+    },
+    {
+      "id": "docker",
+      "type": "skill",
+      "name": "Docker",
+      "description": "Küçük, güvenli ve önbellek dostu Dockerfile ve compose dosyaları hazırlar.",
+      "author": "Orbital",
+      "version": "1.0.0",
+      "tags": [
+        "devops"
+      ],
+      "files": [
+        "SKILL.md"
+      ]
+    },
+    {
+      "id": "git-araclari",
+      "type": "plugin",
+      "name": "Git Araçları",
+      "description": "Commit ve changelog komutları, git durumu eylemleri ve güvenli git akışı skill'i.",
+      "author": "Orbital",
+      "version": "1.0.0",
+      "tags": [
+        "git"
+      ],
+      "files": [
+        "plugin.json",
+        "skills/git-akisi/SKILL.md"
+      ],
+      "runsCode": true
+    },
+    {
+      "id": "sistem-araclari",
+      "type": "plugin",
+      "name": "Sistem Araçları",
+      "description": "Modelin işletim sistemi, CPU, bellek ve disk bilgisini sorgulayabildiği bir araç.",
+      "author": "Orbital",
+      "version": "1.0.0",
+      "tags": [
+        "sistem"
+      ],
+      "files": [
+        "plugin.json",
+        "tools/sysinfo.ps1",
+        "tools/sysinfo.sh"
+      ],
+      "runsCode": true
+    },
+    {
+      "id": "gizli-anahtar-korumasi",
+      "type": "plugin",
+      "name": "Gizli Anahtar Koruması",
+      "description": "Mesajında API anahtarı ya da özel anahtar varsa gönderimi engeller.",
+      "author": "Orbital",
+      "version": "1.0.0",
+      "tags": [
+        "güvenlik"
+      ],
+      "files": [
+        "hooks/check.ps1",
+        "hooks/check.sh",
+        "plugin.json"
+      ],
+      "runsCode": true
+    },
+    {
+      "id": "web-fetch-mcp",
+      "type": "plugin",
+      "name": "Web Fetch (MCP)",
+      "description": "Modelin web sayfalarını okumasını sağlayan MCP sunucusu. uv (uvx) gerektirir.",
+      "author": "Orbital",
+      "version": "1.0.0",
+      "tags": [
+        "web",
+        "mcp"
+      ],
+      "files": [
+        "plugin.json"
+      ],
+      "runsCode": true
+    },
+    {
+      "id": "github-cli",
+      "type": "plugin",
+      "name": "GitHub CLI",
+      "description": "PR özeti ve issue taslağı komutları; açık PR/issue listeleri. gh gerektirir.",
+      "author": "Orbital",
+      "version": "1.0.0",
+      "tags": [
+        "git",
+        "github"
+      ],
+      "files": [
+        "plugin.json"
+      ],
+      "runsCode": true
+    },
+    {
+      "id": "kod-stili",
+      "type": "plugin",
+      "name": "Kod Stili Kuralları",
+      "description": "Temiz kod kurallarını modelin sistem talimatlarına ekler.",
+      "author": "Orbital",
+      "version": "1.0.0",
+      "tags": [
+        "kalite"
+      ],
+      "files": [
+        "kurallar.md",
+        "plugin.json"
+      ],
+      "runsCode": false
+    },
+    {
+      "id": "oto-mod",
+      "type": "plugin",
+      "name": "Oto Mod",
+      "description": "Kullanıcıdan izin veya onay istemeden tüm dosya, komut ve araç işlemlerini tam otonom olarak otomatik yürütür.",
+      "author": "Orbital",
+      "version": "1.0.0",
+      "tags": [
+        "otonom",
+        "verimlilik"
+      ],
+      "files": [
+        "kurallar.md",
+        "plugin.json"
+      ],
+      "runsCode": false
+    }
+  ]
+}
