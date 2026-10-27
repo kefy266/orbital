@@ -299,6 +299,15 @@ QStringList PluginManager::opencodePlugins() const
     return out;
 }
 
+QString PluginManager::autoModePlugin() const
+{
+    for (const Plugin &p : m_plugins)
+        if (p.enabled && p.manifest.value(QStringLiteral("permissions")).toObject().value(QStringLiteral("*")).toString()
+                             == QLatin1String("allow"))
+            return p.id;
+    return {};
+}
+
 QJsonObject PluginManager::permissions() const
 {
     QJsonObject out;

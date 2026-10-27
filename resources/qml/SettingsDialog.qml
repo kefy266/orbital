@@ -439,6 +439,7 @@ Popup {
                             Row {
                                 Layout.alignment: Qt.AlignTop
                                 spacing: 6
+                                OButton { text: "GitHub'dan yükle"; iconName: "download"; variant: "ghost"; onClicked: githubSkillDialog.openDialog() }
                                 OButton { text: "İçe aktar"; variant: "ghost"; onClicked: importSkillDialog.open() }
                                 OButton { text: "Yeni skill"; iconName: "plus"; variant: "primary"; onClicked: skillEditor.edit(null) }
                             }
@@ -671,6 +672,8 @@ Popup {
         placeholder: "kimlik, ör. benim-araclarim"
         onSubmitted: v => { const e = App.createPlugin(v); if (e) errorText.show(e); dialog.refresh() }
     }
+    GitHubSkillDialog { id: githubSkillDialog; onInstalled: dialog.refresh() }
+
     ConfirmDialog {
         id: removePluginConfirm
         property string targetId

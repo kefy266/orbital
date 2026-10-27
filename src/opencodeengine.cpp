@@ -220,6 +220,9 @@ void OpencodeEngine::buildOverlay(std::function<void(const QByteArray &)> done)
             permission.insert(QStringLiteral("edit"), strictest(policy(QStringLiteral("write")), policy(QStringLiteral("edit"))));
             permission.insert(QStringLiteral("webfetch"), policy(QStringLiteral("*")));
             permission.insert(QStringLiteral("websearch"), policy(QStringLiteral("*")));
+            // Auto mode (a plugin allowing every tool): never stop to ask the user questions.
+            if (m_plugins && m_plugins->permissions().value(QStringLiteral("*")).toString() == QLatin1String("allow"))
+                permission.insert(QStringLiteral("question"), QStringLiteral("deny"));
             overlay.insert(QStringLiteral("permission"), permission);
         }
 

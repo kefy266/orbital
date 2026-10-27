@@ -228,6 +228,44 @@ Item {
                     ToolTip.text: "Build: dosya düzenler, komut çalıştırır · Plan: yalnızca okur ve plan çıkarır"
                 }
 
+                // Auto mode warning: visible whenever Orbital runs without asking.
+                AbstractButton {
+                    id: autoBadge
+                    visible: App.autoMode
+                    implicitHeight: 30
+                    implicitWidth: autoRow.implicitWidth + 20
+                    hoverEnabled: true
+                    onClicked: App.disableAutoMode()
+                    ToolTip.visible: hovered
+                    ToolTip.delay: 400
+                    ToolTip.text: "Oto-mod açık: Orbital izin istemeden dosya yazar ve komut çalıştırır. Kapatmak için tıkla."
+                    background: Rectangle {
+                        radius: 15
+                        color: autoBadge.hovered ? Theme.dangerSoft : Qt.alpha(Theme.danger, 0.10)
+                        border.width: 1
+                        border.color: Qt.alpha(Theme.danger, 0.45)
+                    }
+                    contentItem: Row {
+                        id: autoRow
+                        spacing: 5
+                        leftPadding: 10
+                        Text {
+                            text: "⚡"
+                            font.pixelSize: Theme.fontSmall
+                            color: Theme.danger
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                        Text {
+                            text: autoBadge.hovered ? "Oto-mod'u kapat" : "Oto-mod açık"
+                            font.family: Theme.font
+                            font.pixelSize: Theme.fontCaption + 1
+                            font.weight: Font.DemiBold
+                            color: Theme.danger
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                    }
+                }
+
                 Item { Layout.fillWidth: true }
 
                 Text {

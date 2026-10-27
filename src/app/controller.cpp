@@ -23,6 +23,7 @@
 #include <QProcess>
 #include <QRegularExpression>
 #include <QTextStream>
+#include <QTimer>
 #include <QUrl>
 #include <memory>
 
@@ -894,6 +895,21 @@ QString AppController::linkifyPlain(const QString &text) const
     return html;
 }
 
+bool AppController::autoMode() const
+{
+    return !m_plugins->autoModePlugin().isEmpty();
+}
+
+void AppController::disableAutoMode()
+{
+    const QString id = m_plugins->autoModePlugin();
+    if (id.isEmpty())
+        return;
+    setPluginEnabled(id, false);
+    applySettings();
+    Q_EMIT toast(QStringLiteral("Oto-mod kapatıldı; Orbital riskli adımlardan önce yine izin isteyecek"));
+}
+
 void AppController::openPath(const QString &path)
 {
     QDesktopServices::openUrl(QUrl::fromLocalFile(path));
@@ -1027,6 +1043,161 @@ QString AppController::importSkill(const QUrl &folder)
     m_settingsDirty = true;
     refreshCommands();
     return {};
+}
+
+void AppController::githubGet(const QUrl &url, std::function<void(const QByteArray &, const QString &)> done)
+{
+    QNetworkRequest req(url);
+    req.setTransferTimeout(30000);
+    req.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("Orbital"));
+    req.setRawHeader("Accept", "application/vnd.github+json");
+    QNetworkReply *reply = m_nam->get(req);
+    connect(reply, &QNetworkReply::finished, this, [reply, done] {
+        reply->deleteLater();
+        const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        if (status == 404)
+            done({}, QStringLiteral("Bulunamadı (depo gizli ya da adres yanlış olabilir)."));
+        else if (status == 403 || status == 429)
+            done({}, QStringLiteral("GitHub istek sınırına ulaşıldı, biraz sonra tekrar dene."));
+        else if (reply->error() != QNetworkReply::NoError)
+            done({}, reply->errorString());
+        else
+            done(reply->readAll(), {});
+    });
+}
+
+void AppController::installSkillFromGitHub(const QString &input)
+{
+    // github.com/{owner}/{repo}[/tree|blob/{ref}/{path}] or plain owner/repo.
+    static const QRegularExpression full(QStringLiteral(
+        R"(^(?:https?://)?(?:www\.)?github\.com/([\w.-]+)/([\w.-]+?)(?:\.git)?(?:/(?:tree|blob)/([^/]+)(?:/(.*?))?)?/?(?:[?#].*)?$)"));
+    static const QRegularExpression shorthand(QStringLiteral(R"(^([\w.-]+)/([\w.-]+)$)"));
+    const QString text = input.trimmed();
+    QRegularExpressionMatch m = full.match(text);
+    if (!m.hasMatch())
+        m = shorthand.match(text);
+    if (!m.hasMatch()) {
+        Q_EMIT githubSkillDone(false, QStringLiteral("Geçerli bir GitHub adresi gir (ör. github.com/kullanıcı/depo)."));
+        return;
+    }
+    const QString owner = m.captured(1), repo = m.captured(2);
+    QString path = m.captured(4);
+    if (path.endsWith(QStringLiteral("SKILL.md")))
+        path = path.section(QLatin1Char('/'), 0, -2);
+    while (path.endsWith(QLatin1Char('/')))
+        path.chop(1);
+    const QString api = QStringLiteral("https://api.github.com/repos/%1/%2").arg(owner, repo);
+
+    auto fail = [this](const QString &message) { Q_EMIT githubSkillDone(false, message); };
+
+    // Step 3: download every file of the found skills into staging, then import them.
+    auto download = [this, owner, repo, fail](const QString &ref, const QStringList &skillDirs, const QStringList &files) {
+        const QString staging = Paths::dataDir() + QStringLiteral("/store-staging/github");
+        QDir(staging).removeRecursively();
+        auto remaining = std::make_shared<QStringList>(files);
+        auto next = std::make_shared<std::function<void()>>();
+        *next = [this, owner, repo, ref, skillDirs, staging, remaining, next, fail] {
+            if (remaining->isEmpty()) {
+                QStringList installed, errors;
+                for (const QString &dir : skillDirs) {
+                    QString error, name;
+                    if (m_skills->importFolder(staging + QStringLiteral("/files/") + dir, &error, true, &name))
+                        installed << name;
+                    else
+                        errors << error;
+                }
+                QDir(staging).removeRecursively();
+                // Break the self-reference once this call has returned (it runs inside *next).
+                QTimer::singleShot(0, this, [next] { *next = nullptr; });
+                m_settingsDirty = true;
+                refreshCommands();
+                if (installed.isEmpty())
+                    fail(errors.value(0, QStringLiteral("Skill yüklenemedi.")));
+                else
+                    Q_EMIT githubSkillDone(true, installed.size() == 1
+                                                     ? QStringLiteral("'%1' skill'i yüklendi.").arg(installed.first())
+                                                     : QStringLiteral("%1 skill yüklendi: %2").arg(installed.size()).arg(installed.join(QStringLiteral(", "))));
+                return;
+            }
+            const QString file = remaining->takeFirst();
+            QStringList parts = file.split(QLatin1Char('/'));
+            for (QString &p : parts)
+                p = QString::fromLatin1(QUrl::toPercentEncoding(p));
+            const QUrl url(QStringLiteral("https://raw.githubusercontent.com/%1/%2/%3/%4")
+                               .arg(owner, repo, QString::fromLatin1(QUrl::toPercentEncoding(ref)), parts.join(QLatin1Char('/'))));
+            githubGet(url, [staging, file, next, fail](const QByteArray &data, const QString &error) {
+                if (!error.isEmpty()) {
+                    QDir(staging).removeRecursively();
+                    fail(QStringLiteral("%1 indirilemedi: %2").arg(file, error));
+                    *next = nullptr;
+                    return;
+                }
+                const QString dst = staging + QStringLiteral("/files/") + file;
+                QDir().mkpath(QFileInfo(dst).absolutePath());
+                QFile f(dst);
+                if (f.open(QIODevice::WriteOnly))
+                    f.write(data);
+                (*next)();
+            });
+        };
+        (*next)();
+    };
+
+    // Step 2: list the repository tree and pick the folders that hold a SKILL.md.
+    auto listTree = [this, api, path, download, fail](const QString &ref) {
+        githubGet(QUrl(api + QStringLiteral("/git/trees/%1?recursive=1").arg(QString::fromLatin1(QUrl::toPercentEncoding(ref)))),
+                  [path, ref, download, fail](const QByteArray &data, const QString &error) {
+            if (!error.isEmpty())
+                return fail(error);
+            const QString prefix = path.isEmpty() ? QString() : path + QLatin1Char('/');
+            QStringList skillDirs;
+            QList<QPair<QString, qint64>> blobs;
+            for (const QJsonValue &v : QJsonDocument::fromJson(data).object().value(QStringLiteral("tree")).toArray()) {
+                const QJsonObject o = v.toObject();
+                const QString p = o.value(QStringLiteral("path")).toString();
+                if (o.value(QStringLiteral("type")).toString() != QLatin1String("blob") || p.split(QLatin1Char('/')).contains(QStringLiteral("..")))
+                    continue;
+                if (!prefix.isEmpty() && !p.startsWith(prefix) && p != path + QStringLiteral("/SKILL.md"))
+                    continue;
+                blobs << qMakePair(p, qint64(o.value(QStringLiteral("size")).toDouble()));
+                if (p == QLatin1String("SKILL.md") || p.endsWith(QStringLiteral("/SKILL.md")))
+                    skillDirs << (p.contains(QLatin1Char('/')) ? p.section(QLatin1Char('/'), 0, -2) : QString());
+            }
+            if (skillDirs.isEmpty())
+                return fail(QStringLiteral("Bu adreste SKILL.md içeren bir klasör bulunamadı."));
+            // A skill folder nested inside another one belongs to its parent.
+            std::sort(skillDirs.begin(), skillDirs.end());
+            QStringList roots;
+            for (const QString &d : std::as_const(skillDirs))
+                if (std::none_of(roots.begin(), roots.end(), [&d](const QString &r) { return r.isEmpty() || d.startsWith(r + QLatin1Char('/')); }))
+                    roots << d;
+            if (roots.size() > 50)
+                return fail(QStringLiteral("Bu adreste çok fazla skill var (%1); belirli bir klasörün adresini gir.").arg(roots.size()));
+            QStringList files;
+            qint64 total = 0;
+            for (const auto &[p, size] : std::as_const(blobs)) {
+                if (std::none_of(roots.begin(), roots.end(), [&p](const QString &r) { return r.isEmpty() || p.startsWith(r + QLatin1Char('/')); }))
+                    continue;
+                files << p;
+                total += size;
+            }
+            if (files.size() > 500 || total > 30 * 1024 * 1024)
+                return fail(QStringLiteral("Skill dosyaları çok büyük (%1 dosya, %2 MB).").arg(files.size()).arg(total / (1024 * 1024)));
+            download(ref, roots, files);
+        });
+    };
+
+    // Step 1: resolve the branch when the URL does not name one.
+    if (!m.captured(3).isEmpty()) {
+        listTree(m.captured(3));
+        return;
+    }
+    githubGet(QUrl(api), [listTree, fail](const QByteArray &data, const QString &error) {
+        if (!error.isEmpty())
+            return fail(error);
+        const QString branch = QJsonDocument::fromJson(data).object().value(QStringLiteral("default_branch")).toString();
+        listTree(branch.isEmpty() ? QStringLiteral("main") : branch);
+    });
 }
 
 QVariantList AppController::pluginList() const

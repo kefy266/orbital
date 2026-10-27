@@ -53,6 +53,7 @@ class AppController : public QObject
     Q_PROPERTY(QVariantMap question READ question NOTIFY questionChanged)
     Q_PROPERTY(QStringList promptHistory READ promptHistory NOTIFY promptHistoryChanged)
     Q_PROPERTY(QString themeMode READ themeMode WRITE setThemeMode NOTIFY themeModeChanged)
+    Q_PROPERTY(bool autoMode READ autoMode NOTIFY actionsChanged)
     Q_PROPERTY(QVariantList storeItems READ storeItems NOTIFY storeChanged)
     Q_PROPERTY(bool storeLoading READ storeLoading NOTIFY storeChanged)
     Q_PROPERTY(QString storeError READ storeError NOTIFY storeChanged)
@@ -129,6 +130,9 @@ public:
     Q_INVOKABLE void runAction(int index);
     Q_INVOKABLE void copyText(const QString &text);
     Q_INVOKABLE void openPath(const QString &path);
+    bool autoMode() const;
+    // Turns auto mode off (disables the plugin that grants it) and restarts the engine.
+    Q_INVOKABLE void disableAutoMode();
     // Opens web/e-mail links from the chat in the default browser.
     Q_INVOKABLE void openLink(const QString &url);
     // Plain user text -> rich text with clickable links.
@@ -142,6 +146,9 @@ public:
     Q_INVOKABLE QString deleteSkill(const QString &name);
     Q_INVOKABLE void setSkillEnabled(const QString &name, bool enabled);
     Q_INVOKABLE QString importSkill(const QUrl &folder);
+    // Installs every skill (folder with a SKILL.md) found at a GitHub repo/folder URL;
+    // answers with githubSkillDone.
+    Q_INVOKABLE void installSkillFromGitHub(const QString &url);
     // Settings: plugins
     Q_INVOKABLE QVariantList pluginList() const;
     Q_INVOKABLE void setPluginEnabled(const QString &id, bool enabled);
@@ -213,6 +220,7 @@ Q_SIGNALS:
     void providerResult(const QString &id, bool ok, const QString &message);
     void storeChanged();
     void storeItemDone(const QString &id, bool ok, const QString &message);
+    void githubSkillDone(bool ok, const QString &message);
     void updateChanged();
     void updateProgressChanged();
     void scrollToEnd();
@@ -267,6 +275,7 @@ private:
     QString m_storeError;
     QStringList m_storeBusy;
     QString storeUrl() const;
+    void githubGet(const QUrl &url, std::function<void(const QByteArray &, const QString &)> done);
     void fetchStoreFile(const QString &path, std::function<void(const QByteArray &, const QString &)> done);
     QMetaObject::Connection m_mcpConnection;
 

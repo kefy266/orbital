@@ -36,7 +36,8 @@ public:
     bool save(const QString &originalName, const QString &name, const QString &description, const QString &body,
               QString *error);
     bool remove(const QString &name, QString *error);
-    bool importFolder(const QString &folder, QString *error);
+    // replace: overwrite an installed skill of the same name (updates from GitHub).
+    bool importFolder(const QString &folder, QString *error, bool replace = false, QString *installedName = nullptr);
 
     QStringList enabledSkillDirs() const;
 

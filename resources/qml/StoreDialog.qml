@@ -38,6 +38,8 @@ Popup {
         }
     }
 
+    GitHubSkillDialog { id: githubSkillDialog }
+
     contentItem: ColumnLayout {
         spacing: 0
 
@@ -63,6 +65,7 @@ Popup {
                         font.family: Theme.font; font.pixelSize: Theme.fontUi; color: Theme.textMuted
                     }
                 }
+                OButton { Layout.alignment: Qt.AlignTop; text: "GitHub'dan skill"; iconName: "download"; variant: "ghost"; onClicked: githubSkillDialog.openDialog() }
                 IconButton { Layout.alignment: Qt.AlignTop; iconName: "x"; tip: "Kapat (Esc)"; onClicked: store.close() }
             }
             RowLayout {

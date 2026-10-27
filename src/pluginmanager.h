@@ -65,6 +65,8 @@ public:
     QStringList instructionFiles() const;
     QStringList opencodePlugins() const;
     QJsonObject permissions() const;
+    // Id of the enabled plugin that allows every tool ("*": "allow"), if any.
+    QString autoModePlugin() const;
 
     // Runs all beforePrompt hooks in order. Returns false (with reason) if a hook blocks.
     bool runBeforePrompt(QString *text, const QString &sessionId, const QString &directory, QString *reason) const;

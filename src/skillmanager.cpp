@@ -166,7 +166,7 @@ bool SkillManager::remove(const QString &name, QString *error)
     return true;
 }
 
-bool SkillManager::importFolder(const QString &folder, QString *error)
+bool SkillManager::importFolder(const QString &folder, QString *error, bool replace, QString *installedName)
 {
     Skill probe;
     if (!parse(folder + QStringLiteral("/SKILL.md"), &probe)) {
@@ -176,9 +176,14 @@ bool SkillManager::importFolder(const QString &folder, QString *error)
     const QString name = sanitizeName(probe.name);
     const QString target = Paths::skillsDir() + QLatin1Char('/') + name;
     if (QFileInfo::exists(target)) {
-        *error = tr("'%1' adında bir skill zaten var.").arg(name);
-        return false;
+        if (!replace) {
+            *error = tr("'%1' adında bir skill zaten var.").arg(name);
+            return false;
+        }
+        QDir(target).removeRecursively();
     }
+    if (installedName)
+        *installedName = name;
     QDirIterator it(folder, QDir::Files, QDirIterator::Subdirectories);
     while (it.hasNext()) {
         const QString src = it.next();
