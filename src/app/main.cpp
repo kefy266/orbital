@@ -10,10 +10,17 @@
 #include <QQmlApplicationEngine>
 #include <QQuickStyle>
 #include <QQuickWindow>
+#include <QMouseEvent>
 #include <QTimer>
 
 int main(int argc, char *argv[])
 {
+#ifdef Q_OS_LINUX
+    // Native file/folder pickers: KDE's platform theme only offers them to
+    // QtWidgets apps, the desktop portal works for Qt Quick too (KDE, GNOME…).
+    if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORMTHEME"))
+        qputenv("QT_QPA_PLATFORMTHEME", "xdgdesktopportal");
+#endif
     QGuiApplication app(argc, argv);
     QGuiApplication::setApplicationName(QStringLiteral("Orbital"));
     QGuiApplication::setOrganizationName(QStringLiteral("Orbital"));
@@ -49,6 +56,19 @@ int main(int argc, char *argv[])
         const QString session = qEnvironmentVariable("ORBITAL_SCREENSHOT_SESSION");
         if (!session.isEmpty())
             QTimer::singleShot(2500, &controller, [&controller, session] { controller.openSession(session); });
+        // ORBITAL_SCREENSHOT_CLICKS="x,y;x,y": left clicks, 800 ms apart, starting at 2 s.
+        const QStringList clicks = qEnvironmentVariable("ORBITAL_SCREENSHOT_CLICKS").split(QLatin1Char(';'), Qt::SkipEmptyParts);
+        for (int i = 0; i < clicks.size(); ++i) {
+            const QPointF pos(clicks.at(i).section(QLatin1Char(','), 0, 0).toDouble(),
+                              clicks.at(i).section(QLatin1Char(','), 1, 1).toDouble());
+            QTimer::singleShot(2000 + i * 800, window, [window, pos] {
+                for (QEvent::Type type : {QEvent::MouseButtonPress, QEvent::MouseButtonRelease}) {
+                    QMouseEvent ev(type, pos, pos, window->mapToGlobal(pos), Qt::LeftButton,
+                                   type == QEvent::MouseButtonPress ? Qt::LeftButton : Qt::NoButton, Qt::NoModifier);
+                    QCoreApplication::sendEvent(window, &ev);
+                }
+            });
+        }
         QTimer::singleShot(delay, &app, [window, shot] {
             window->grabWindow().save(shot);
             QCoreApplication::quit();

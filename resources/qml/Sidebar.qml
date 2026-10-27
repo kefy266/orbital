@@ -21,6 +21,8 @@ Rectangle {
     FolderDialog {
         id: folderDialog
         title: "Proje klasörü seç"
+        // Without an explicit window the non-native fallback dialog never shows.
+        parentWindow: root.Window.window
         onAccepted: App.setProject(selectedFolder)
     }
 

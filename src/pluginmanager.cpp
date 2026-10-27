@@ -240,6 +240,12 @@ QJsonObject PluginManager::mcpServers() const
             // Relative script paths in a local server command resolve against the plugin folder.
             if (server.value(QStringLiteral("type")).toString() == QLatin1String("local")) {
                 QJsonArray cmd = server.value(QStringLiteral("command")).toArray();
+#ifdef Q_OS_WIN
+                // Node/Python launchers are .cmd shims on Windows.
+                static const QStringList shims{QStringLiteral("npx"), QStringLiteral("npm"), QStringLiteral("pnpm"), QStringLiteral("yarn")};
+                if (!cmd.isEmpty() && shims.contains(cmd.at(0).toString()))
+                    cmd[0] = cmd.at(0).toString() + QStringLiteral(".cmd");
+#endif
                 for (int i = 0; i < cmd.size(); ++i) {
                     const QString arg = cmd.at(i).toString();
                     if (arg.startsWith(QStringLiteral("./")))

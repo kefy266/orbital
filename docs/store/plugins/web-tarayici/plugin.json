@@ -1,0 +1,21 @@
+{
+  "id": "web-tarayici",
+  "name": "Web Tarayıcı",
+  "version": "1.0.0",
+  "author": "Orbital",
+  "description": "Orbital'e gerçek bir web tarayıcısı verir: sayfa açar, tıklar, yazar, form doldurur, sayfa içeriğini okur ve ekran görüntüsü alır (Playwright MCP). Node.js gerektirir; ilk kullanımdan önce + menüsünden \"Tarayıcıyı kur\" eylemini çalıştır.",
+  "skills": "skills",
+  "mcp": {
+    "tarayici": {
+      "type": "local",
+      "command": ["npx", "-y", "@playwright/mcp@latest", "--browser", "firefox", "--isolated"]
+    }
+  },
+  "actions": [
+    {
+      "label": "Tarayıcıyı kur (ilk kullanım)",
+      "run": "npx -y -p @playwright/mcp@latest playwright install firefox",
+      "mode": "insert"
+    }
+  ]
+}

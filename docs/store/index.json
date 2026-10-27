@@ -210,6 +210,23 @@
       "runsCode": true
     },
     {
+      "id": "web-tarayici",
+      "type": "plugin",
+      "name": "Web Tarayıcı",
+      "description": "Orbital gerçek bir tarayıcı kullanır: sayfa açar, tıklar, form doldurur, içerik okur, ekran görüntüsü alır. Node.js gerektirir.",
+      "author": "Orbital",
+      "version": "1.0.0",
+      "tags": [
+        "web",
+        "mcp"
+      ],
+      "files": [
+        "plugin.json",
+        "skills/web-tarayici/SKILL.md"
+      ],
+      "runsCode": true
+    },
+    {
       "id": "github-cli",
       "type": "plugin",
       "name": "GitHub CLI",

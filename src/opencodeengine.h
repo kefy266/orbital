@@ -59,6 +59,7 @@ private:
     using Callback = std::function<void(const QJsonValue &data, const QString &error)>;
 
     void install();
+    void listProjectSessions(std::function<void(const QList<SessionInfo> &)> done);
     void launch();
     void buildOverlay(std::function<void(const QByteArray &)> done);
     void onServerReady();

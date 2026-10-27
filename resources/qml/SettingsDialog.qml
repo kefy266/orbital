@@ -35,10 +35,10 @@ Popup {
     exit: Transition { NumberAnimation { property: "opacity"; to: 0; duration: Theme.fast } }
     background: Rectangle { radius: Theme.radiusLg; color: Theme.bg; border.width: 1; border.color: Theme.border }
 
-    FolderDialog { id: projectDialog; onAccepted: App.setProject(selectedFolder) }
-    FolderDialog { id: importSkillDialog; title: "SKILL.md içeren klasörü seç"
+    FolderDialog { id: projectDialog; parentWindow: dialog.parent ? dialog.parent.Window.window : null; onAccepted: App.setProject(selectedFolder) }
+    FolderDialog { id: importSkillDialog; parentWindow: dialog.parent ? dialog.parent.Window.window : null; title: "SKILL.md içeren klasörü seç"
         onAccepted: { const e = App.importSkill(selectedFolder); if (e) errorText.show(e); dialog.refresh() } }
-    FolderDialog { id: installPluginDialog; title: "plugin.json içeren klasörü seç"
+    FolderDialog { id: installPluginDialog; parentWindow: dialog.parent ? dialog.parent.Window.window : null; title: "plugin.json içeren klasörü seç"
         onAccepted: { const e = App.installPlugin(selectedFolder); if (e) errorText.show(e); dialog.refresh() } }
 
     // ---------------------------------------------------------- building blocks

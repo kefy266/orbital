@@ -333,6 +333,12 @@ void AppController::onEngineReady()
     refreshModels();
     refreshCommands();
     refreshSessions();
+    if (!m_pendingHistory.isEmpty()) {
+        const QString pending = m_pendingHistory;
+        m_pendingHistory.clear();
+        if (pending == m_sessionId)
+            loadSessionHistory(pending);
+    }
     if (!m_queued.isEmpty()) {
         const QString q = m_queued;
         m_queued.clear();
@@ -518,6 +524,10 @@ void AppController::openSession(const QString &id)
         Paths::saveSettings(s);
         Q_EMIT projectChanged();
         Q_EMIT projectsChanged();
+        // The engine restarts for the other project: load the history once it is ready.
+        m_engineReady = false;
+        m_pendingHistory = id;
+        Q_EMIT engineChanged();
         m_engine->start(m_directory);
     }
 
@@ -532,6 +542,12 @@ void AppController::openSession(const QString &id)
     Q_EMIT busyChanged();
     Q_EMIT usageChanged();
     Q_EMIT questionChanged();
+    if (m_pendingHistory != id)
+        loadSessionHistory(id);
+}
+
+void AppController::loadSessionHistory(const QString &id)
+{
     m_engine->loadHistory(id, [this, id](const QJsonArray &items) {
         if (id != m_sessionId)
             return;
@@ -841,6 +857,41 @@ void AppController::copyText(const QString &text)
 {
     QGuiApplication::clipboard()->setText(text);
     Q_EMIT toast(QStringLiteral("Panoya kopyalandı"));
+}
+
+void AppController::openLink(const QString &link)
+{
+    QUrl url = QUrl::fromUserInput(link);
+    const QString scheme = url.scheme().toLower();
+    if (scheme != QLatin1String("http") && scheme != QLatin1String("https") && scheme != QLatin1String("mailto")) {
+        Q_EMIT toast(QStringLiteral("Bu bağlantı türü açılamaz: %1").arg(link.left(80)));
+        return;
+    }
+    if (qEnvironmentVariableIsSet("ORBITAL_SCREENSHOT")) { // test runs: don't launch a browser
+        qInfo("openLink: %s", qPrintable(url.toString()));
+        return;
+    }
+    QDesktopServices::openUrl(url);
+}
+
+QString AppController::linkifyPlain(const QString &text) const
+{
+    static const QRegularExpression url(QStringLiteral("((?:https?://|www\\.)[^\\s<>\"']*[^\\s<>\"'.,;:!?)\\]])"),
+                                        QRegularExpression::CaseInsensitiveOption);
+    QString html;
+    qsizetype last = 0;
+    auto it = url.globalMatch(text);
+    while (it.hasNext()) {
+        const auto m = it.next();
+        html += text.mid(last, m.capturedStart() - last).toHtmlEscaped();
+        const QString shown = m.captured(1);
+        const QString target = shown.startsWith(QStringLiteral("www."), Qt::CaseInsensitive) ? QStringLiteral("https://") + shown : shown;
+        html += QStringLiteral("<a href=\"%1\">%2</a>").arg(target.toHtmlEscaped(), shown.toHtmlEscaped());
+        last = m.capturedEnd();
+    }
+    html += text.mid(last).toHtmlEscaped();
+    html.replace(QLatin1Char('\n'), QStringLiteral("<br>"));
+    return html;
 }
 
 void AppController::openPath(const QString &path)

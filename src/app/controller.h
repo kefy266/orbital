@@ -129,6 +129,10 @@ public:
     Q_INVOKABLE void runAction(int index);
     Q_INVOKABLE void copyText(const QString &text);
     Q_INVOKABLE void openPath(const QString &path);
+    // Opens web/e-mail links from the chat in the default browser.
+    Q_INVOKABLE void openLink(const QString &url);
+    // Plain user text -> rich text with clickable links.
+    Q_INVOKABLE QString linkifyPlain(const QString &text) const;
     Q_INVOKABLE void retryEngine();
 
     // Settings: skills
@@ -218,6 +222,7 @@ private:
     void connectEngine();
     void onEngineReady();
     void refreshSessions();
+    void loadSessionHistory(const QString &id);
     void refreshModels();
     void refreshCommands();
     void dispatch(const QString &text, const QStringList &skills);
@@ -245,6 +250,7 @@ private:
     QString m_sessionId;
     QString m_sessionTitle;
     QString m_queued;
+    QString m_pendingHistory; // session to load once the restarted engine is ready
     QHash<QString, bool> m_busy;
     bool m_thinking = false;
     QString m_usage;

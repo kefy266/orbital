@@ -8,8 +8,35 @@
 
 namespace {
 
+// Browser tools arrive as "<server>_browser_<action>" from the web browser plugin.
+QString browserAction(const QString &name)
+{
+    const int at = name.indexOf(QStringLiteral("browser_"));
+    return at < 0 ? QString() : name.mid(at + 8);
+}
+
 QString toolTitle(const QString &name)
 {
+    const QString browser = browserAction(name);
+    if (!browser.isEmpty()) {
+        static const QHash<QString, QString> actions{
+            {QStringLiteral("navigate"), QStringLiteral("Sayfa açıldı")},
+            {QStringLiteral("navigate_back"), QStringLiteral("Geri gidildi")},
+            {QStringLiteral("snapshot"), QStringLiteral("Sayfa okundu")},
+            {QStringLiteral("take_screenshot"), QStringLiteral("Ekran görüntüsü alındı")},
+            {QStringLiteral("click"), QStringLiteral("Tıklandı")},
+            {QStringLiteral("type"), QStringLiteral("Yazıldı")},
+            {QStringLiteral("fill_form"), QStringLiteral("Form dolduruldu")},
+            {QStringLiteral("select_option"), QStringLiteral("Seçim yapıldı")},
+            {QStringLiteral("press_key"), QStringLiteral("Tuşa basıldı")},
+            {QStringLiteral("hover"), QStringLiteral("İmleç getirildi")},
+            {QStringLiteral("wait_for"), QStringLiteral("Sayfa beklendi")},
+            {QStringLiteral("tabs"), QStringLiteral("Sekmeler")},
+            {QStringLiteral("find"), QStringLiteral("Sayfada arandı")},
+            {QStringLiteral("close"), QStringLiteral("Tarayıcı kapatıldı")},
+        };
+        return actions.value(browser, QStringLiteral("Tarayıcı"));
+    }
     static const QHash<QString, QString> titles{
         {QStringLiteral("read"), QStringLiteral("Dosya okundu")},
         {QStringLiteral("write"), QStringLiteral("Dosya yazıldı")},
@@ -29,6 +56,8 @@ QString toolTitle(const QString &name)
 
 QString toolIcon(const QString &name)
 {
+    if (!browserAction(name).isEmpty())
+        return QStringLiteral("globe");
     if (name == QLatin1String("read"))
         return QStringLiteral("file");
     if (name == QLatin1String("write") || name == QLatin1String("edit") || name == QLatin1String("patch"))
@@ -121,6 +150,43 @@ QVariant ChatModel::data(const QModelIndex &index, int role) const
     }
 }
 
+// Turns bare http(s):// and www. addresses into markdown autolinks so they are
+// clickable; leaves inline code, existing [links](…) and <autolinks> alone.
+static QString linkifyMarkdown(const QString &prose)
+{
+    static const QRegularExpression url(
+        QStringLiteral("(?<![\\w/<(\\[\"'=])((?:https?://|www\\.)[^\\s<>()\\[\\]`\"']*[^\\s<>()\\[\\]`\"'.,;:!?*_])"),
+        QRegularExpression::CaseInsensitiveOption);
+    QString out;
+    const QStringList parts = prose.split(QLatin1Char('`')); // odd parts are inline code
+    for (int i = 0; i < parts.size(); ++i) {
+        if (i > 0)
+            out += QLatin1Char('`');
+        if (i % 2 == 1) {
+            out += parts.at(i);
+            continue;
+        }
+        QString part = parts.at(i);
+        QString result;
+        qsizetype last = 0;
+        auto it = url.globalMatch(part);
+        while (it.hasNext()) {
+            const auto m = it.next();
+            // Skip URLs that already sit inside a markdown link target "](…)".
+            if (m.capturedStart() >= 2 && part.mid(m.capturedStart() - 2, 2) == QLatin1String("]("))
+                continue;
+            result += part.mid(last, m.capturedStart() - last);
+            const QString target = m.captured(1).startsWith(QStringLiteral("www."), Qt::CaseInsensitive)
+                                       ? QStringLiteral("https://") + m.captured(1) : m.captured(1);
+            result += QStringLiteral("[%1](%2)").arg(m.captured(1), target);
+            last = m.capturedEnd();
+        }
+        result += part.mid(last);
+        out += result;
+    }
+    return out;
+}
+
 QVariantList ChatModel::splitMarkdown(const QString &markdown)
 {
     // Separate fenced code blocks (``` or ~~~) from prose; an unterminated
@@ -132,7 +198,8 @@ QVariantList ChatModel::splitMarkdown(const QString &markdown)
     QString fence;
     const auto flushProse = [&] {
         if (!prose.trimmed().isEmpty())
-            out << QVariantMap{{QStringLiteral("type"), QStringLiteral("text")}, {QStringLiteral("text"), prose.trimmed()}};
+            out << QVariantMap{{QStringLiteral("type"), QStringLiteral("text")},
+                               {QStringLiteral("text"), linkifyMarkdown(prose.trimmed())}};
         prose.clear();
     };
     static const QRegularExpression open(QStringLiteral("^\\s{0,3}(```+|~~~+)\\s*([^`\\s]*)"));

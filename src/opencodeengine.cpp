@@ -538,6 +538,29 @@ void OpencodeEngine::handleEvent(const QString &type, const QJsonObject &p)
 
 void OpencodeEngine::listSessions(std::function<void(const QList<SessionInfo> &)> done)
 {
+    // /session only covers the engine's current project (each git repo is its
+    // own project), so list across projects; fall back for engines without it.
+    call("GET", QStringLiteral("/experimental/session?roots=true&limit=500"), {}, [this, done](const QJsonValue &data, const QString &error) {
+        if (!error.isEmpty() || !data.isArray()) {
+            listProjectSessions(done);
+            return;
+        }
+        QList<SessionInfo> out;
+        for (const QJsonValue &v : data.toArray()) {
+            const QJsonObject s = v.toObject();
+            if (s.contains(QStringLiteral("parentID")))
+                continue;
+            out << SessionInfo{s.value(QStringLiteral("id")).toString(), s.value(QStringLiteral("title")).toString(),
+                               qint64(s.value(QStringLiteral("time")).toObject().value(QStringLiteral("updated")).toDouble()),
+                               s.value(QStringLiteral("directory")).toString()};
+        }
+        std::sort(out.begin(), out.end(), [](const SessionInfo &a, const SessionInfo &b) { return a.updated > b.updated; });
+        done(out);
+    });
+}
+
+void OpencodeEngine::listProjectSessions(std::function<void(const QList<SessionInfo> &)> done)
+{
     call("GET", QStringLiteral("/session"), {}, [done](const QJsonValue &data, const QString &) {
         QList<SessionInfo> out;
         for (const QJsonValue &v : data.toArray()) {

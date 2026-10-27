@@ -90,15 +90,19 @@ ListView {
                             anchors.margins: 11
                             anchors.leftMargin: 16
                             anchors.rightMargin: 16
-                            text: row.text
+                            text: App.linkifyPlain(row.text)
+                            textFormat: TextEdit.RichText
                             readOnly: true
                             selectByMouse: true
                             wrapMode: TextEdit.Wrap
                             font.family: Theme.font
                             font.pixelSize: Theme.fontBody
                             color: Theme.text
+                            palette.link: Theme.accent
                             selectionColor: Theme.accentSoft
                             selectedTextColor: Theme.text
+                            onLinkActivated: link => App.openLink(link)
+                            HoverHandler { cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.IBeamCursor }
                         }
                     }
                     HoverHandler { id: bubbleHover }
@@ -144,9 +148,10 @@ ListView {
                                 font.family: Theme.font
                                 font.pixelSize: Theme.fontBody
                                 color: Theme.text
+                                palette.link: Theme.accent
                                 selectionColor: Theme.accentSoft
                                 selectedTextColor: Theme.text
-                                onLinkActivated: link => Qt.openUrlExternally(link)
+                                onLinkActivated: link => App.openLink(link)
                                 HoverHandler { cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.IBeamCursor }
                             }
                         }
