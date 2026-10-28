@@ -135,7 +135,7 @@ jobs:
           sed -i 's/^ *//' AppDir/apprun-hooks/orbital-env.sh
 
           ./linuxdeploy --appimage-extract-and-run --appdir AppDir --output appimage
-          mv Orbital*-x86_64.AppImage Orbital-x86_64.AppImage
+          [ -f Orbital-x86_64.AppImage ] || mv Orbital*-x86_64.AppImage Orbital-x86_64.AppImage
           tar -C AppDir -czf orbital-linux-x86_64.tar.gz .
 
       - name: Smoke test (bundled AppImage, offscreen)
