@@ -365,7 +365,7 @@
           </ul>
         </div>
       </div>
-      <noscript><p class="build-note">Gereksinimler: Windows 10/11 (64 bit) · macOS 12+ ve Apple Silicon (M1 ve sonrası) · Linux x86_64 ve Qt 6 · internet bağlantısı.</p></noscript>
+      <noscript><p class="build-note">Gereksinimler: Windows 10/11 (64 bit) · macOS 12+ ve Apple Silicon (M1 ve sonrası) · Linux x86_64 (Ubuntu 22.04+ ve benzerleri) · internet bağlantısı.</p></noscript>
     </section>
 
     <section id="indir">
@@ -393,7 +393,7 @@
         <article class="card" data-os="linux">
           <div class="symbol">$</div>
           <h3>Linux<span class="yours">SENİN İÇİN</span></h3>
-          <p>AppImage'i indir, çalıştırma izni ver ve aç. Paket kurmaya gerek yok:</p>
+          <p>AppImage'i indir, çalıştırma izni ver ve aç. Her şey içinde; Qt ya da başka paket kurmaya gerek yok:</p>
           <pre>chmod +x Orbital-x86_64.AppImage</pre>
           <a class="button primary" href="https://github.com/kefy266/orbital/releases/latest/download/Orbital-x86_64.AppImage">
             <svg viewBox="0 0 24 24"><path d="M12 4v11M7 10.5 12 15.5l5-5M5 20h14"/></svg>Linux (.AppImage)</a>
@@ -459,7 +459,7 @@
       const armish = arch === 'arm' || /aarch64|armv/.test(ua);
       if (armish) { verdict = 'no'; row('no', 'İşlemci', 'ARM · şimdilik yalnızca x86_64'); }
       else { verdict = 'ok'; row('ok', 'Sistem', label + ' · x86_64'); }
-      row('warn', 'Qt 6', 'sistemde kurulu olmalı (qt6-base, qt6-declarative, qt6-svg)');
+      row('info', 'Dağıtım', '2022 ve sonrası (Ubuntu 22.04+, Debian 12+, Fedora 36+, Arch…)');
       file = 'Orbital-x86_64.AppImage'; btn = 'Linux için indir';
     } else {
       row('warn', 'Sistem', 'algılanamadı · aşağıdan sistemini seç');
