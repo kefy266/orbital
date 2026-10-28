@@ -62,19 +62,48 @@ jobs:
           timeout 60 ./build/orbital
           test -s smoke-linux.png
 
-      - name: Package
-        run: |
-          mkdir -p dist/orbital
-          cp build/orbital README.md dist/orbital/
-          tar -C dist -czf orbital-linux-x86_64.tar.gz orbital
+      - uses: actions/upload-artifact@v4
+        with:
+          name: smoke-linux
+          path: smoke-linux.png
 
-          # AppImage
+  # The AppImage is built on an older Ubuntu (glibc 2.35) with Qt bundled inside,
+  # so it runs on most distributions without installing Qt.
+  appimage:
+    name: Linux AppImage (Qt bundled)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libgl1-mesa-dev libegl1 libxkbcommon-x11-0 \
+            libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
+            libxcb-shape0 libxcb-xinerama0 libxcb-xkb1 libfontconfig1 libdbus-1-3 libfuse2 file
+
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          modules: qtwaylandcompositor
+          cache: true
+
+      - name: Build Orbital
+        run: |
+          qmake CONFIG+=release orbital.pro -o build.mk
+          make -f build.mk -j"$(nproc)"
+
+      - name: Bundle Qt into an AppImage
+        env:
+          QML_SOURCES_PATHS: ${{ github.workspace }}/resources/qml
+          EXTRA_PLATFORM_PLUGINS: libqwayland-egl.so;libqwayland-generic.so
+          EXTRA_QT_MODULES: waylandcompositor;svg
+          NO_STRIP: "1"
+        run: |
           mkdir -p AppDir/usr/bin AppDir/usr/share/applications AppDir/usr/share/icons/hicolor/scalable/apps
           cp build/orbital AppDir/usr/bin/orbital
-          cp resources/orbital.svg AppDir/orbital.svg
-          cp resources/orbital.svg AppDir/.DirIcon
           cp resources/orbital.svg AppDir/usr/share/icons/hicolor/scalable/apps/orbital.svg
-          cat > AppDir/orbital.desktop << 'EOF'
+          cat > AppDir/usr/share/applications/orbital.desktop << 'EOF'
           [Desktop Entry]
           Type=Application
           Name=Orbital
@@ -83,19 +112,46 @@ jobs:
           Categories=Development;
           Comment=AI coding assistant
           Terminal=false
+          StartupWMClass=orbital
           EOF
-          cp AppDir/orbital.desktop AppDir/usr/share/applications/orbital.desktop
-          cat > AppDir/AppRun << 'EOF'
-          #!/bin/sh
-          HERE="$(dirname "$(readlink -f "${0}")")"
-          export PATH="${HERE}/usr/bin:${PATH}"
-          exec "${HERE}/usr/bin/orbital" "$@"
-          EOF
-          chmod +x AppDir/AppRun
+          sed -i 's/^ *//' AppDir/usr/share/applications/orbital.desktop
 
-          curl -sL https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage -o appimagetool
-          chmod +x appimagetool
-          ARCH=x86_64 ./appimagetool --appimage-extract-and-run AppDir Orbital-x86_64.AppImage
+          base=https://github.com/linuxdeploy
+          curl -fsSL -o linuxdeploy $base/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          curl -fsSL -o linuxdeploy-plugin-qt $base/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+          chmod +x linuxdeploy linuxdeploy-plugin-qt
+          export QMAKE="$(command -v qmake)"
+          export LD_LIBRARY_PATH="$QT_ROOT_DIR/lib:$LD_LIBRARY_PATH"
+          ./linuxdeploy --appimage-extract-and-run --appdir AppDir --plugin qt \
+            --desktop-file AppDir/usr/share/applications/orbital.desktop \
+            --icon-file resources/orbital.svg
+
+          # Portal file dialogs and Wayland work out of the box; fall back to X11 if Wayland fails.
+          mkdir -p AppDir/apprun-hooks
+          cat > AppDir/apprun-hooks/orbital-env.sh << 'EOF'
+          [ -z "$QT_QPA_PLATFORMTHEME" ] && export QT_QPA_PLATFORMTHEME=xdgdesktopportal
+          [ -z "$QT_QPA_PLATFORM" ] && [ -n "$WAYLAND_DISPLAY" ] && export QT_QPA_PLATFORM="wayland;xcb"
+          EOF
+          sed -i 's/^ *//' AppDir/apprun-hooks/orbital-env.sh
+
+          ./linuxdeploy --appimage-extract-and-run --appdir AppDir --output appimage
+          mv Orbital*-x86_64.AppImage Orbital-x86_64.AppImage
+          tar -C AppDir -czf orbital-linux-x86_64.tar.gz .
+
+      - name: Smoke test (bundled AppImage, offscreen)
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
+          ORBITAL_SCREENSHOT: ${{ github.workspace }}/smoke-appimage.png
+          ORBITAL_SCREENSHOT_DELAY: "4000"
+          XDG_CONFIG_HOME: ${{ runner.temp }}/cfg
+          XDG_DATA_HOME: ${{ runner.temp }}/data
+        run: |
+          # Make sure no Qt from the build machine leaks in: only the bundled copy may be used.
+          env -u LD_LIBRARY_PATH -u QT_PLUGIN_PATH -u QML2_IMPORT_PATH -u QT_ROOT_DIR \
+            timeout 60 ./Orbital-x86_64.AppImage --appimage-extract-and-run
+          test -s smoke-appimage.png
+          ls -la Orbital-x86_64.AppImage orbital-linux-x86_64.tar.gz
 
       - uses: actions/upload-artifact@v4
         with:
@@ -103,7 +159,7 @@ jobs:
           path: |
             Orbital-x86_64.AppImage
             orbital-linux-x86_64.tar.gz
-            smoke-linux.png
+            smoke-appimage.png
 
   windows:
     name: Windows (MSVC)
@@ -201,7 +257,7 @@ jobs:
   release:
     name: Release
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [linux, windows, macos]
+    needs: [linux, appimage, windows, macos]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
