@@ -94,18 +94,25 @@ elif [ "$OS" = "Linux" ]; then
   curl -fSL --progress-bar "${RELEASE_URL}/Orbital-x86_64.AppImage" -o "$TARGET_BIN"
   chmod +x "$TARGET_BIN"
 
+  ICON_DIR="${HOME}/.local/share/icons/hicolor/scalable/apps"
+  mkdir -p "$ICON_DIR"
+  curl -fsSL "https://raw.githubusercontent.com/kefy266/orbital/main/resources/orbital.svg" -o "${ICON_DIR}/orbital.svg" || true
+
   DESKTOP_DIR="${HOME}/.local/share/applications"
   mkdir -p "$DESKTOP_DIR"
-  cat > "${DESKTOP_DIR}/orbital.desktop" << 'EOF'
+  cat > "${DESKTOP_DIR}/orbital.desktop" << EOF
 [Desktop Entry]
 Type=Application
 Name=Orbital
-Exec=orbital
+Exec=${TARGET_BIN}
 Icon=orbital
+StartupWMClass=orbital
 Categories=Development;Utility;
 Comment=AI-powered code assistant
 Terminal=false
 EOF
+  update-desktop-database "$DESKTOP_DIR" >/dev/null 2>&1 || true
+  gtk-update-icon-cache -q "${HOME}/.local/share/icons/hicolor" >/dev/null 2>&1 || true
 
   printf "${GREEN}✓ Orbital başarıyla kuruldu: %s${NC}\n" "$TARGET_BIN"
   printf "${BOLD}${CYAN}→ Orbital başlatılıyor...${NC}\n"

@@ -184,7 +184,12 @@ jobs:
           macdeployqt build/Orbital.app -qmldir=resources/qml
           rm -rf build/Orbital.app/Contents/PlugIns/sqldrivers
           codesign --force --deep --sign - build/Orbital.app
-          hdiutil create -volname Orbital -srcfolder build/Orbital.app -ov -format UDZO Orbital-macos-arm64.dmg
+          test -f build/Orbital.app/Contents/Resources/orbital.icns
+          # Disk image with the usual "drag Orbital onto Applications" layout.
+          mkdir -p dmg
+          cp -R build/Orbital.app dmg/
+          ln -s /Applications dmg/Applications
+          hdiutil create -volname Orbital -srcfolder dmg -ov -format UDZO Orbital-macos-arm64.dmg
 
       - uses: actions/upload-artifact@v4
         with:
