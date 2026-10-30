@@ -1,24 +1,24 @@
 {
-  "version": "0.3.9",
-  "tag_name": "v0.3.9",
-  "name": "Orbital v0.3.9",
-  "body": "Otomatik sessiz GitHub Pages skill ve mağaza eşitlemesi (yeni skiller için uygulama güncellemesi gerekmez). Model kota veya akış hatası durumunda sonsuz dönme/takılma sorunu giderildi.",
+  "version": "0.4.0",
+  "tag_name": "v0.4.0",
+  "name": "Orbital v0.4.0",
+  "body": "Kotası/limiti biten modellere kilit (🔒) simgesi ve durum uyarısı eklendi. Gelişmiş slash komutları (/yardim, /model, /models, /kilit-ac, /durum, /oto, /mod, /kaydet, /ozet, /incele, /duzelt, /commit, /test, /dokuman, /temizle) getirildi. Google/OpenCode 429 Too Many Requests ve SQLite UNIQUE constraint oturum hataları giderildi.",
   "assets": [
     {
       "name": "Orbital-x86_64.AppImage",
-      "browser_download_url": "https://github.com/kefy266/orbital/releases/download/v0.3.9/Orbital-x86_64.AppImage"
+      "browser_download_url": "https://github.com/kefy266/orbital/releases/download/v0.4.0/Orbital-x86_64.AppImage"
     },
     {
       "name": "Orbital-windows-x64.zip",
-      "browser_download_url": "https://github.com/kefy266/orbital/releases/download/v0.3.9/Orbital-windows-x64.zip"
+      "browser_download_url": "https://github.com/kefy266/orbital/releases/download/v0.4.0/Orbital-windows-x64.zip"
     },
     {
       "name": "Orbital-macos-arm64.dmg",
-      "browser_download_url": "https://github.com/kefy266/orbital/releases/download/v0.3.9/Orbital-macos-arm64.dmg"
+      "browser_download_url": "https://github.com/kefy266/orbital/releases/download/v0.4.0/Orbital-macos-arm64.dmg"
     },
     {
       "name": "orbital-linux-x86_64.tar.gz",
-      "browser_download_url": "https://github.com/kefy266/orbital/releases/download/v0.3.9/orbital-linux-x86_64.tar.gz"
+      "browser_download_url": "https://github.com/kefy266/orbital/releases/download/v0.4.0/orbital-linux-x86_64.tar.gz"
     }
   ]
 }

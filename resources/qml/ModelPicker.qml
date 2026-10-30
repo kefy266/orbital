@@ -28,6 +28,13 @@ AbstractButton {
             color: Theme.text
             anchors.verticalCenter: parent.verticalCenter
         }
+        Icon {
+            name: "lock"
+            size: 13
+            color: Theme.danger
+            visible: App.isCurrentModelLocked
+            anchors.verticalCenter: parent.verticalCenter
+        }
         Icon { name: "chevron-down"; size: 14; color: Theme.textFaint; anchors.verticalCenter: parent.verticalCenter }
     }
 
@@ -84,21 +91,51 @@ AbstractButton {
                     id: item
                     required property var modelData
                     readonly property bool current: modelData.ref === App.modelRef
+                    readonly property bool locked: modelData.locked === true
                     width: ListView.view.width
-                    implicitHeight: 36
+                    implicitHeight: 38
                     hoverEnabled: true
-                    onClicked: { App.setModel(modelData.ref); popup.close() }
+                    onClicked: {
+                        App.setModel(modelData.ref)
+                        popup.close()
+                        if (locked)
+                            App.toast("Bu modelin kotası dolmuştu (🔒). Kilidi kaldırmak için /kilit-ac yazabilirsiniz.")
+                    }
                     background: Rectangle { radius: Theme.radiusSm; color: item.hovered ? Theme.hover : "transparent" }
                     contentItem: RowLayout {
+                        spacing: 6
                         Text {
                             Layout.leftMargin: 10
-                            Layout.fillWidth: true
                             text: item.modelData.name
                             elide: Text.ElideRight
                             font.family: Theme.font
                             font.pixelSize: Theme.fontUi
-                            color: Theme.text
+                            color: item.locked ? Theme.textFaint : Theme.text
                         }
+                        Rectangle {
+                            visible: item.locked
+                            radius: 4
+                            color: Qt.alpha(Theme.danger, 0.15)
+                            border.width: 1
+                            border.color: Qt.alpha(Theme.danger, 0.35)
+                            implicitHeight: 18
+                            implicitWidth: lockRow.implicitWidth + 8
+                            Row {
+                                id: lockRow
+                                anchors.centerIn: parent
+                                spacing: 3
+                                Icon { name: "lock"; size: 11; color: Theme.danger; anchors.verticalCenter: parent.verticalCenter }
+                                Text {
+                                    text: "Limit Doldu"
+                                    font.family: Theme.font
+                                    font.pixelSize: Theme.fontSmall - 1
+                                    font.weight: Font.Medium
+                                    color: Theme.danger
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                            }
+                        }
+                        Item { Layout.fillWidth: true }
                         Icon { Layout.rightMargin: 10; visible: item.current; name: "check"; size: 16; color: Theme.accent }
                     }
                 }

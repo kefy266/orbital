@@ -13,15 +13,17 @@
 #include <QNetworkAccessManager>
 
 #include <QClipboard>
+#include <QDateTime>
 #include <QDesktopServices>
 #include <QDir>
+#include <QFile>
 #include <QGuiApplication>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QNetworkReply>
-#include <QFile>
 #include <QProcess>
 #include <QRegularExpression>
+#include <QStandardPaths>
 #include <QTextStream>
 #include <QTimer>
 #include <QUrl>
@@ -54,6 +56,7 @@ AppController::AppController(QObject *parent)
     m_sessionRefresh.setInterval(300);
     connect(&m_sessionRefresh, &QTimer::timeout, this, &AppController::refreshSessions);
     loadPromptHistory();
+    loadLockedModels();
 }
 
 AppController::~AppController()
@@ -238,6 +241,23 @@ void AppController::retryEngine()
     switchEngine(engineId());
 }
 
+static bool isLimitOrQuotaError(const QString &msg)
+{
+    const QString l = msg.toLower();
+    return l.contains(QStringLiteral("too many requests"))
+        || l.contains(QStringLiteral("free usage limit reached"))
+        || l.contains(QStringLiteral("limit reached"))
+        || l.contains(QStringLiteral("rate limit"))
+        || l.contains(QStringLiteral("rate_limit"))
+        || l.contains(QStringLiteral("credit balance is too low"))
+        || l.contains(QStringLiteral("quota"))
+        || l.contains(QStringLiteral("resourceexhausted"))
+        || l.contains(QStringLiteral("insufficient_quota"))
+        || l.contains(QStringLiteral("exceeded your current quota"))
+        || l.contains(QStringLiteral("billing"))
+        || l.contains(QStringLiteral("429"));
+}
+
 void AppController::connectEngine()
 {
     Engine *e = m_engine;
@@ -280,6 +300,15 @@ void AppController::connectEngine()
     connect(e, &Engine::busyChanged, this, [this](const QString &sid, bool busy) { setBusyFor(sid, busy); });
     connect(e, &Engine::errorOccurred, this, [this](const QString &sid, const QString &message) {
         setBusyFor(sid, false);
+        if (isLimitOrQuotaError(message)) {
+            lockModel(m_modelRef, message);
+        }
+        if (message.contains(QLatin1String("UNIQUE constraint failed")) || message.contains(QLatin1String("SQLiteError"))) {
+            if (sid == m_sessionId) {
+                m_sessionId.clear();
+                Q_EMIT sessionChanged();
+            }
+        }
         if (!isCurrent(sid))
             return;
         setThinking(false);
@@ -428,7 +457,8 @@ void AppController::refreshModels()
                                     {QStringLiteral("provider"), prettyProviderName(m.provider, m.providerName)},
                                     {QStringLiteral("model"), m.model},
                                     {QStringLiteral("name"), pretty},
-                                    {QStringLiteral("free"), free || m.provider == QLatin1String("opencode")}};
+                                    {QStringLiteral("free"), free || m.provider == QLatin1String("opencode")},
+                                    {QStringLiteral("locked"), m_lockedModels.contains(m.ref())}};
         }
         QString wanted = Paths::loadSettings().value(QStringLiteral("model.") + engine->id()).toString();
         if (wanted.isEmpty() && engine->id() == QLatin1String("native"))
@@ -469,13 +499,60 @@ void AppController::refreshCommands()
         if (engine != m_engine)
             return;
         m_commands.clear();
+
+        static const struct BuiltinCmd {
+            const char *name;
+            const char *desc;
+        } kBuiltins[] = {
+            {"yardim", "Tüm / komutlarını ve özellikleri listele"},
+            {"help", "Tüm / komutlarını ve özellikleri listele"},
+            {"temizle", "Sohbeti temizle ve yeni oturum başlat"},
+            {"clear", "Sohbeti temizle ve yeni oturum başlat"},
+            {"model", "Aktif modeli göster veya değiştir (Örn: /model deepseek)"},
+            {"models", "Tüm modelleri ve kilit durumlarını listele"},
+            {"kilit-ac", "Kotası dolan modelin kilidini kaldır (/kilit-ac hepsi)"},
+            {"unlock", "Kotası dolan modelin kilidini kaldır (/unlock all)"},
+            {"durum", "Proje, aktif model, çalışma modu ve sistem durumunu göster"},
+            {"status", "Proje, aktif model, çalışma modu ve sistem durumunu göster"},
+            {"oto", "Oto-modu aç/kapat (İzin sormadan komut ve dosya işlemi)"},
+            {"auto", "Oto-modu aç/kapat (İzin sormadan komut ve dosya işlemi)"},
+            {"mod", "Çalışma modunu değiştir (Örn: /mod build veya /mod plan)"},
+            {"agent", "Çalışma modunu değiştir (Örn: /agent build veya /agent plan)"},
+            {"kaydet", "Sohbeti Markdown (.md) dosyası olarak projeye kaydet"},
+            {"export", "Sohbeti Markdown (.md) dosyası olarak projeye kaydet"},
+            {"ozet", "Sohbeti özetleyerek bağlam boyutunu küçült"},
+            {"compact", "Sohbeti özetleyerek bağlam boyutunu küçült"},
+            {"incele", "Git diff değişikliklerini incele ve hata/risk raporla"},
+            {"review", "Git diff değişikliklerini incele ve hata/risk raporla"},
+            {"duzelt", "Belirtilen hatayı veya kodu analiz edip onar (/duzelt <hata>)"},
+            {"fix", "Belirtilen hatayı veya kodu analiz edip onar (/fix <hata>)"},
+            {"commit", "Git değişikliklerine göre Conventional Commit öner"},
+            {"test", "Seçilen dosya veya fonksiyon için birim testleri yaz"},
+            {"dokuman", "Kod için açıklayıcı dokümantasyon üret"},
+            {"docs", "Kod için açıklayıcı dokümantasyon üret"}
+        };
+        for (const auto &b : kBuiltins) {
+            m_commands << QVariantMap{{QStringLiteral("name"), QString::fromUtf8(b.name)},
+                                      {QStringLiteral("description"), QString::fromUtf8(b.desc)},
+                                      {QStringLiteral("source"), QStringLiteral("command")}};
+        }
+
         for (const Skill &s : m_skills->skills())
             if (s.enabled)
                 m_commands << QVariantMap{{QStringLiteral("name"), s.name}, {QStringLiteral("description"), s.description},
                                           {QStringLiteral("source"), QStringLiteral("skill")}};
-        for (const CommandDef &d : defs)
-            m_commands << QVariantMap{{QStringLiteral("name"), d.name}, {QStringLiteral("description"), d.description},
-                                      {QStringLiteral("source"), d.source}};
+        for (const CommandDef &d : defs) {
+            bool exists = false;
+            for (const QVariant &existing : std::as_const(m_commands)) {
+                if (existing.toMap().value(QStringLiteral("name")).toString() == d.name) {
+                    exists = true;
+                    break;
+                }
+            }
+            if (!exists)
+                m_commands << QVariantMap{{QStringLiteral("name"), d.name}, {QStringLiteral("description"), d.description},
+                                          {QStringLiteral("source"), d.source}};
+        }
         Q_EMIT commandsChanged();
     });
 }
@@ -693,26 +770,58 @@ void AppController::submit(const QString &rawText)
     savePromptHistory();
     Q_EMIT promptHistoryChanged();
 
+    if (trimmed.startsWith(QLatin1Char('/'))) {
+        const QString cmdLine = trimmed.mid(1);
+        const int spaceIdx = cmdLine.indexOf(QLatin1Char(' '));
+        const QString name = (spaceIdx >= 0 ? cmdLine.left(spaceIdx) : cmdLine).trimmed();
+        const QString args = (spaceIdx >= 0 ? cmdLine.mid(spaceIdx + 1) : QString()).trimmed();
+
+        if (m_skills->find(name)) {
+            QStringList skills = m_attached;
+            if (!skills.contains(name))
+                skills << name;
+            QString text = trimmed.mid(name.size() + 1).trimmed();
+            if (text.isEmpty()) {
+                attachSkill(name);
+                return;
+            }
+            m_attached.clear();
+            Q_EMIT attachedSkillsChanged();
+            if (m_sessionId.isEmpty()) {
+                m_chat->clear();
+                m_engine->createSession([this, text, skills](const QString &id, const QString &error) {
+                    if (id.isEmpty()) {
+                        m_chat->addError(QStringLiteral("Oturum oluşturulamadı: %1").arg(error));
+                        return;
+                    }
+                    m_sessionId = id;
+                    m_sessionTitle = text.simplified().left(60);
+                    Q_EMIT sessionChanged();
+                    dispatch(text, skills);
+                    refreshSessions();
+                });
+                return;
+            }
+            dispatch(text, skills);
+            return;
+        }
+
+        if (handleSlashCommand(name, args))
+            return;
+    }
+
     if (!m_engine || !m_engineReady) {
         m_queued = trimmed;
         Q_EMIT toast(QStringLiteral("Motor hazırlanıyor; mesajın hazır olunca gönderilecek"));
         return;
     }
+
+    if (isCurrentModelLocked()) {
+        Q_EMIT toast(QStringLiteral("Seçili modelin kotası dolmuş durumda (🔒). Farklı bir model seçebilir veya /kilit-ac yazabilirsiniz."));
+    }
+
     QString text = trimmed;
     QStringList skills = m_attached;
-
-    if (text.startsWith(QLatin1Char('/'))) {
-        const QString name = text.mid(1).section(QLatin1Char(' '), 0, 0);
-        if (m_skills->find(name)) {
-            if (!skills.contains(name))
-                skills << name;
-            text = text.mid(name.size() + 1).trimmed();
-            if (text.isEmpty()) {
-                attachSkill(name);
-                return;
-            }
-        }
-    }
 
     QString reason;
     if (!m_plugins->runBeforePrompt(&text, m_sessionId, m_directory, &reason)) {
@@ -952,6 +1061,403 @@ void AppController::clearPromptHistory()
     m_promptHistory.clear();
     savePromptHistory();
     Q_EMIT promptHistoryChanged();
+}
+
+void AppController::toggleAutoMode()
+{
+    if (autoMode()) {
+        disableAutoMode();
+    } else {
+        setPluginEnabled(QStringLiteral("oto-mod"), true);
+        applySettings();
+        Q_EMIT toast(QStringLiteral("Oto-mod açıldı ⚡; Orbital artık izin istemeden çalışacak"));
+    }
+}
+
+void AppController::loadLockedModels()
+{
+    m_lockedModels.clear();
+    const QJsonObject s = Paths::loadSettings();
+    const QJsonArray arr = s.value(QStringLiteral("lockedModels")).toArray();
+    for (const QJsonValue &v : arr) {
+        const QString ref = v.toString();
+        if (!ref.isEmpty())
+            m_lockedModels.insert(ref);
+    }
+}
+
+void AppController::saveLockedModels()
+{
+    QJsonObject s = Paths::loadSettings();
+    QJsonArray arr;
+    for (const QString &ref : std::as_const(m_lockedModels))
+        arr.append(ref);
+    s.insert(QStringLiteral("lockedModels"), arr);
+    Paths::saveSettings(s);
+}
+
+void AppController::lockModel(const QString &ref, const QString &reason)
+{
+    Q_UNUSED(reason);
+    if (ref.isEmpty())
+        return;
+    if (!m_lockedModels.contains(ref)) {
+        m_lockedModels.insert(ref);
+        saveLockedModels();
+        for (int i = 0; i < m_models.size(); ++i) {
+            QVariantMap m = m_models.at(i).toMap();
+            if (m.value(QStringLiteral("ref")).toString() == ref) {
+                m.insert(QStringLiteral("locked"), true);
+                m_models[i] = m;
+                break;
+            }
+        }
+        Q_EMIT modelsChanged();
+        if (ref == m_modelRef)
+            Q_EMIT modelChanged();
+    }
+    const QString name = prettyModelName(ref.section(QLatin1Char('/'), 1), nullptr);
+    Q_EMIT toast(QStringLiteral("Model kotası/limiti doldu (🔒): %1. Farklı bir modele geçebilirsiniz.").arg(name.isEmpty() ? ref : name));
+}
+
+void AppController::unlockModel(const QString &ref)
+{
+    if (m_lockedModels.remove(ref)) {
+        saveLockedModels();
+        for (int i = 0; i < m_models.size(); ++i) {
+            QVariantMap m = m_models.at(i).toMap();
+            if (m.value(QStringLiteral("ref")).toString() == ref) {
+                m.insert(QStringLiteral("locked"), false);
+                m_models[i] = m;
+                break;
+            }
+        }
+        Q_EMIT modelsChanged();
+        if (ref == m_modelRef)
+            Q_EMIT modelChanged();
+    }
+}
+
+void AppController::unlockAllModels()
+{
+    m_lockedModels.clear();
+    saveLockedModels();
+    for (int i = 0; i < m_models.size(); ++i) {
+        QVariantMap m = m_models.at(i).toMap();
+        m.insert(QStringLiteral("locked"), false);
+        m_models[i] = m;
+    }
+    Q_EMIT modelsChanged();
+    Q_EMIT modelChanged();
+}
+
+bool AppController::handleSlashCommand(const QString &name, const QString &args)
+{
+    const QString cmd = name.toLower();
+
+    // 1. /yardim, /help
+    if (cmd == QLatin1String("yardim") || cmd == QLatin1String("help")) {
+        m_chat->addUser(QStringLiteral("/") + name + (args.isEmpty() ? QString() : QLatin1Char(' ') + args), {});
+        QString help = QStringLiteral(
+            "### ⚡ Orbital Slash Komutları\n\n"
+            "Aşağıdaki komutları doğrudan sohbet kutusuna yazarak kullanabilirsiniz:\n\n"
+            "| Komut | Açıklama |\n"
+            "| :--- | :--- |\n"
+            "| `/yardim`, `/help` | Tüm kullanılabilir / komutlarını listeler |\n"
+            "| `/temizle`, `/clear` | Sohbeti temizler ve yeni bir oturum başlatır |\n"
+            "| `/model [isim]` | Aktif modeli gösterir veya hızlıca değiştirir (Örn: `/model deepseek`) |\n"
+            "| `/models` | Tüm modelleri, ücretsiz (✨) ve kilit (🔒) durumlarını listeler |\n"
+            "| `/kilit-ac`, `/unlock [model/hepsi]` | Kotası dolup kilitlenen modellerin kilidini kaldırır |\n"
+            "| `/durum`, `/status` | Çalışma alanı, model, mod ve token durumunu özetler |\n"
+            "| `/oto`, `/auto` | İzin sormadan işlem yapma (Oto-mod) durumunu açar/kapatır |\n"
+            "| `/mod`, `/agent [build/plan]` | Çalışma modunu değiştirir (Build: kod yazar, Plan: analiz) |\n"
+            "| `/kaydet`, `/export` | Mevcut sohbeti Markdown (.md) olarak projeye kaydeder |\n"
+            "| `/ozet`, `/compact` | Sohbeti özetleyerek bağlam boyutunu küçültür |\n"
+            "| `/incele`, `/review` | Git diff değişikliklerini inceler ve hata/risk raporlar |\n"
+            "| `/duzelt`, `/fix [hata]` | Belirtilen hatayı veya kodu adım adım analiz edip onarır |\n"
+            "| `/commit [mesaj]` | Git değişikliklerine göre Conventional Commit önerir |\n"
+            "| `/test [dosya]` | Belirtilen kod için birim testleri (unit tests) yazar |\n"
+            "| `/dokuman`, `/docs [dosya]` | Kod için kapsamlı dokümantasyon üretir |\n\n"
+            "💡 *Ayrıca `/limitsiz` veya `/figma-mcp` gibi yüklü skillerin adını yazarak o skilli iliştirebilirsiniz.*"
+        );
+        m_chat->setText(QStringLiteral("cmd_") + QString::number(QDateTime::currentMSecsSinceEpoch()), help);
+        Q_EMIT scrollToEnd();
+        return true;
+    }
+
+    // 2. /temizle, /clear
+    if (cmd == QLatin1String("temizle") || cmd == QLatin1String("clear")) {
+        newChat();
+        Q_EMIT toast(QStringLiteral("Sohbet geçmişi temizlendi"));
+        return true;
+    }
+
+    // 3. /model
+    if (cmd == QLatin1String("model")) {
+        if (args.isEmpty()) {
+            m_chat->addUser(QStringLiteral("/model"), {});
+            const QString status = isCurrentModelLocked() ? QStringLiteral("🔒 Limit/Kota Doldu") : QStringLiteral("Aktif");
+            const QString reply = QStringLiteral("### 🤖 Aktif Model Bilgisi\n"
+                                                 "- **Model:** %1\n"
+                                                 "- **Referans:** `%2`\n"
+                                                 "- **Durum:** %3\n\n"
+                                                 "Modeli değiştirmek için `/model <isim>` veya tüm modelleri görmek için `/models` yazabilirsiniz.")
+                                      .arg(modelLabel(), modelRef(), status);
+            m_chat->setText(QStringLiteral("cmd_") + QString::number(QDateTime::currentMSecsSinceEpoch()), reply);
+            Q_EMIT scrollToEnd();
+            return true;
+        }
+
+        QString targetRef;
+        QString targetName;
+        bool targetLocked = false;
+        const QString needle = args.toLower();
+        for (const QVariant &v : std::as_const(m_models)) {
+            const QVariantMap m = v.toMap();
+            const QString name = m.value(QStringLiteral("name")).toString();
+            const QString ref = m.value(QStringLiteral("ref")).toString();
+            const QString model = m.value(QStringLiteral("model")).toString();
+            if (name.toLower().contains(needle) || ref.toLower().contains(needle) || model.toLower().contains(needle)) {
+                targetRef = ref;
+                targetName = name;
+                targetLocked = m.value(QStringLiteral("locked")).toBool();
+                break;
+            }
+        }
+        if (!targetRef.isEmpty()) {
+            setModel(targetRef);
+            m_chat->addUser(QStringLiteral("/model ") + args, {});
+            QString reply = QStringLiteral("✅ Aktif model **%1** (`%2`) olarak ayarlandı.").arg(targetName, targetRef);
+            if (targetLocked) {
+                reply += QStringLiteral("\n\n⚠️ **Dikkat:** Bu modelin kotası dolmuş olarak işaretlenmiş (🔒). Kilidi açmak için `/kilit-ac %1` yazabilirsiniz.").arg(targetRef);
+            }
+            m_chat->setText(QStringLiteral("cmd_") + QString::number(QDateTime::currentMSecsSinceEpoch()), reply);
+            Q_EMIT scrollToEnd();
+            Q_EMIT toast(QStringLiteral("Model '%1' olarak ayarlandı").arg(targetName));
+        } else {
+            m_chat->addUser(QStringLiteral("/model ") + args, {});
+            m_chat->addError(QStringLiteral("'%1' aramasına uygun model bulunamadı. Kullanılabilir modelleri görmek için /models yazın.").arg(args));
+            Q_EMIT scrollToEnd();
+        }
+        return true;
+    }
+
+    // 4. /models
+    if (cmd == QLatin1String("models")) {
+        m_chat->addUser(QStringLiteral("/models"), {});
+        QString out = QStringLiteral("### 📋 Kullanılabilir Modeller\n\n");
+        QString lastProvider;
+        for (const QVariant &v : std::as_const(m_models)) {
+            const QVariantMap m = v.toMap();
+            const QString prov = m.value(QStringLiteral("provider")).toString();
+            if (prov != lastProvider) {
+                lastProvider = prov;
+                out += QStringLiteral("\n#### %1\n").arg(prov);
+            }
+            const bool isCur = m.value(QStringLiteral("ref")).toString() == modelRef();
+            const bool isLocked = m.value(QStringLiteral("locked")).toBool();
+            const bool isFree = m.value(QStringLiteral("free")).toBool();
+            out += QStringLiteral("- %1 **%2** (`%3`) %4 %5\n")
+                       .arg(isCur ? QStringLiteral("👉") : QStringLiteral("•"),
+                            m.value(QStringLiteral("name")).toString(),
+                            m.value(QStringLiteral("ref")).toString(),
+                            isFree ? QStringLiteral("✨ *Ücretsiz*") : QString(),
+                            isLocked ? QStringLiteral("🔒 **[Limit Doldu]**") : QString());
+        }
+        out += QStringLiteral("\n*Modeli seçmek için `/model <isim>` yazabilirsiniz.*");
+        m_chat->setText(QStringLiteral("cmd_") + QString::number(QDateTime::currentMSecsSinceEpoch()), out);
+        Q_EMIT scrollToEnd();
+        return true;
+    }
+
+    // 5. /kilit-ac, /unlock
+    if (cmd == QLatin1String("kilit-ac") || cmd == QLatin1String("unlock")) {
+        m_chat->addUser(QStringLiteral("/") + name + (args.isEmpty() ? QString() : QLatin1Char(' ') + args), {});
+        if (args.isEmpty() || args.compare(QLatin1String("hepsi"), Qt::CaseInsensitive) == 0 || args.compare(QLatin1String("all"), Qt::CaseInsensitive) == 0) {
+            unlockAllModels();
+            m_chat->setText(QStringLiteral("cmd_") + QString::number(QDateTime::currentMSecsSinceEpoch()),
+                            QStringLiteral("🔓 **Tüm modellerin kilitleri kaldırıldı.** Artık modelleri tekrar deneyebilirsiniz."));
+            Q_EMIT toast(QStringLiteral("Tüm model kilitleri açıldı"));
+        } else {
+            QString matchedRef;
+            for (const QString &r : std::as_const(m_lockedModels)) {
+                if (r.contains(args, Qt::CaseInsensitive)) {
+                    matchedRef = r;
+                    break;
+                }
+            }
+            if (matchedRef.isEmpty())
+                matchedRef = args;
+            unlockModel(matchedRef);
+            m_chat->setText(QStringLiteral("cmd_") + QString::number(QDateTime::currentMSecsSinceEpoch()),
+                            QStringLiteral("🔓 **%1** modelinin kilidi kaldırıldı.").arg(matchedRef));
+            Q_EMIT toast(QStringLiteral("Model kilidi açıldı: %1").arg(matchedRef));
+        }
+        Q_EMIT scrollToEnd();
+        return true;
+    }
+
+    // 6. /durum, /status
+    if (cmd == QLatin1String("durum") || cmd == QLatin1String("status")) {
+        m_chat->addUser(QStringLiteral("/") + name, {});
+        QString lockedStr;
+        if (m_lockedModels.isEmpty()) {
+            lockedStr = QStringLiteral("*Kilitli model yok*");
+        } else {
+            QStringList l;
+            for (const QString &r : std::as_const(m_lockedModels))
+                l << QStringLiteral("`%1` 🔒").arg(r);
+            lockedStr = l.join(QStringLiteral(", "));
+        }
+        QString statusText = QStringLiteral(
+            "### 📊 Orbital Sistem Durumu\n\n"
+            "- **Sürüm:** `v0.4.0`\n"
+            "- **Çalışma Alanı:** `%1` (%2)\n"
+            "- **Aktif Motor:** `%3` (%4)\n"
+            "- **Aktif Model:** **%5** (`%6`) %7\n"
+            "- **Çalışma Modu:** `%8` (%9)\n"
+            "- **Oto-Mod (İzin İstememe):** %10\n"
+            "- **Kilitli Modeller:** %11\n"
+            "- **Bağlı Skiller:** %12\n"
+            "- **Token Kullanımı:** %13\n"
+        ).arg(projectName(), projectPath(),
+              engineId() == QLatin1String("native") ? QStringLiteral("Yerel (Native Engine)") : QStringLiteral("Orbital Cloud (OpenCode)"),
+              engineReady() ? QStringLiteral("Hazır") : QStringLiteral("Başlatılıyor"),
+              modelLabel(), modelRef(), isCurrentModelLocked() ? QStringLiteral("🔒 **[Limit/Kota Doldu]**") : QStringLiteral("✅ Normal"),
+              m_agent == QLatin1String("build") ? QStringLiteral("Build") : QStringLiteral("Plan"),
+              m_agent == QLatin1String("build") ? QStringLiteral("Dosya yazar, komut çalıştırır") : QStringLiteral("Yalnızca okur ve plan çıkarır"),
+              autoMode() ? QStringLiteral("⚡ **Açık** (İzin istemez)") : QStringLiteral("Kapalı (Güvenli mod)"),
+              lockedStr,
+              m_attached.isEmpty() ? QStringLiteral("*Yok*") : m_attached.join(QStringLiteral(", ")),
+              m_usage.isEmpty() ? QStringLiteral("0 token") : m_usage);
+
+        m_chat->setText(QStringLiteral("cmd_") + QString::number(QDateTime::currentMSecsSinceEpoch()), statusText);
+        Q_EMIT scrollToEnd();
+        return true;
+    }
+
+    // 7. /oto, /auto
+    if (cmd == QLatin1String("oto") || cmd == QLatin1String("auto")) {
+        toggleAutoMode();
+        m_chat->addUser(QStringLiteral("/") + name, {});
+        const QString msg = autoMode()
+            ? QStringLiteral("⚡ **Oto-mod açıldı.** Orbital artık komut çalıştırma ve dosya düzenleme işlemleri için onay sormadan ilerleyecektir.")
+            : QStringLiteral("🛡️ **Oto-mod kapatıldı.** Orbital kritik dosya ve komut işlemlerinden önce onay isteyecektir.");
+        m_chat->setText(QStringLiteral("cmd_") + QString::number(QDateTime::currentMSecsSinceEpoch()), msg);
+        Q_EMIT scrollToEnd();
+        return true;
+    }
+
+    // 8. /mod, /agent
+    if (cmd == QLatin1String("mod") || cmd == QLatin1String("agent")) {
+        m_chat->addUser(QStringLiteral("/") + name + (args.isEmpty() ? QString() : QLatin1Char(' ') + args), {});
+        if (args.compare(QLatin1String("plan"), Qt::CaseInsensitive) == 0) {
+            setAgent(QStringLiteral("plan"));
+            m_chat->setText(QStringLiteral("cmd_") + QString::number(QDateTime::currentMSecsSinceEpoch()),
+                            QStringLiteral("🔍 Çalışma modu **Plan** olarak ayarlandı. Orbital yalnızca okuma yapıp plan hazırlayacak."));
+        } else if (args.compare(QLatin1String("build"), Qt::CaseInsensitive) == 0) {
+            setAgent(QStringLiteral("build"));
+            m_chat->setText(QStringLiteral("cmd_") + QString::number(QDateTime::currentMSecsSinceEpoch()),
+                            QStringLiteral("🔨 Çalışma modu **Build** olarak ayarlandı. Orbital dosyaları düzenleyebilir ve komutları çalıştırabilir."));
+        } else {
+            m_chat->setText(QStringLiteral("cmd_") + QString::number(QDateTime::currentMSecsSinceEpoch()),
+                            QStringLiteral("Kullanım: `/mod build` veya `/mod plan`. (Şu anki mod: **%1**)").arg(m_agent));
+        }
+        Q_EMIT scrollToEnd();
+        return true;
+    }
+
+    // 9. /kaydet, /export
+    if (cmd == QLatin1String("kaydet") || cmd == QLatin1String("export")) {
+        m_chat->addUser(QStringLiteral("/") + name, {});
+        const QString exportDir = (m_directory == Paths::noFolderDir() || m_directory.isEmpty())
+                                      ? QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)
+                                      : m_directory;
+        const QString filename = QStringLiteral("orbital-sohbet-%1.md").arg(QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd-hhmmss")));
+        const QString fullPath = exportDir + QLatin1Char('/') + filename;
+        QFile f(fullPath);
+        if (f.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            f.write(m_chat->exportMarkdown(m_sessionTitle, projectName()).toUtf8());
+            f.close();
+            m_chat->setText(QStringLiteral("cmd_") + QString::number(QDateTime::currentMSecsSinceEpoch()),
+                            QStringLiteral("💾 **Sohbet başarıyla kaydedildi:**\n`%1`").arg(fullPath));
+            Q_EMIT toast(QStringLiteral("Sohbet kaydedildi: %1").arg(filename));
+        } else {
+            m_chat->addError(QStringLiteral("Dosya kaydedilemedi: %1").arg(f.errorString()));
+        }
+        Q_EMIT scrollToEnd();
+        return true;
+    }
+
+    // AI-Assisted Prompt Commands
+    // 10. /ozet, /compact
+    if (cmd == QLatin1String("ozet") || cmd == QLatin1String("compact")) {
+        const QString prompt = QStringLiteral("Lütfen şu ana kadarki sohbetimizin ana hatlarını, alınan teknik kararları, "
+                                              "yapılan değişiklikleri ve sıradaki adımları net, maddeler halinde ve kompakt bir şekilde özetle.");
+        submit(prompt);
+        return true;
+    }
+
+    // 11. /incele, /review
+    if (cmd == QLatin1String("incele") || cmd == QLatin1String("review")) {
+        QString prompt = QStringLiteral("Lütfen çalışma alanındaki commit edilmemiş değişiklikleri (`git diff` ve `git status`) incele. "
+                                        "Olası mantık hatalarını, güvenlik açıklarını, performans risklerini ve eksik testleri önem sırasına göre raporla.");
+        if (!args.isEmpty())
+            prompt += QStringLiteral(" Ekstra talimat: %1").arg(args);
+        submit(prompt);
+        return true;
+    }
+
+    // 12. /duzelt, /fix
+    if (cmd == QLatin1String("duzelt") || cmd == QLatin1String("fix")) {
+        if (args.isEmpty()) {
+            m_chat->addUser(QStringLiteral("/") + name, {});
+            m_chat->addError(QStringLiteral("Kullanım: `/duzelt <hata mesajı veya dosya>`"));
+            Q_EMIT scrollToEnd();
+            return true;
+        }
+        const QString prompt = QStringLiteral("Lütfen şu hatayı veya sorunu detaylıca analiz edip adım adım onar: %1").arg(args);
+        submit(prompt);
+        return true;
+    }
+
+    // 13. /commit
+    if (cmd == QLatin1String("commit")) {
+        QString prompt = QStringLiteral("Lütfen `git status` ve `git diff` ile yapılan son değişiklikleri incele. "
+                                        "Conventional Commits standardına uygun (feat, fix, docs, refactor vb.), açıklayıcı bir commit mesajı öner.");
+        if (!args.isEmpty())
+            prompt += QStringLiteral(" Kullanıcı notu: %1").arg(args);
+        submit(prompt);
+        return true;
+    }
+
+    // 14. /test
+    if (cmd == QLatin1String("test")) {
+        if (args.isEmpty()) {
+            m_chat->addUser(QStringLiteral("/") + name, {});
+            m_chat->addError(QStringLiteral("Kullanım: `/test <dosya veya fonksiyon adı>`"));
+            Q_EMIT scrollToEnd();
+            return true;
+        }
+        const QString prompt = QStringLiteral("Lütfen şu dosya veya bileşen için kapsamlı, uç durumları kapsayan birim testleri (unit test) yaz: %1").arg(args);
+        submit(prompt);
+        return true;
+    }
+
+    // 15. /dokuman, /docs
+    if (cmd == QLatin1String("dokuman") || cmd == QLatin1String("docs")) {
+        if (args.isEmpty()) {
+            m_chat->addUser(QStringLiteral("/") + name, {});
+            m_chat->addError(QStringLiteral("Kullanım: `/dokuman <dosya veya kod>`"));
+            Q_EMIT scrollToEnd();
+            return true;
+        }
+        const QString prompt = QStringLiteral("Lütfen şu dosya veya kod parçası için kapsamlı dokümantasyon, kullanım örnekleri ve açıklamalar hazırla: %1").arg(args);
+        submit(prompt);
+        return true;
+    }
+
+    return false;
 }
 
 void AppController::retryLastTurn()
@@ -1774,7 +2280,7 @@ void AppController::applySettings()
 QString AppController::appVersion() const
 {
     const QString ver = QCoreApplication::applicationVersion();
-    return ver.isEmpty() ? QStringLiteral("0.3.9") : ver;
+    return ver.isEmpty() ? QStringLiteral("0.4.0") : ver;
 }
 
 void AppController::checkForUpdates(bool silent)

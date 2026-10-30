@@ -37,6 +37,7 @@ class AppController : public QObject
     Q_PROPERTY(QVariantList models READ models NOTIFY modelsChanged)
     Q_PROPERTY(QString modelRef READ modelRef NOTIFY modelChanged)
     Q_PROPERTY(QString modelLabel READ modelLabel NOTIFY modelChanged)
+    Q_PROPERTY(bool isCurrentModelLocked READ isCurrentModelLocked NOTIFY modelChanged)
     Q_PROPERTY(QVariantList agents READ agents NOTIFY agentsChanged)
     Q_PROPERTY(QString agent READ agent WRITE setAgent NOTIFY agentsChanged)
 
@@ -133,6 +134,12 @@ public:
     bool autoMode() const;
     // Turns auto mode off (disables the plugin that grants it) and restarts the engine.
     Q_INVOKABLE void disableAutoMode();
+    Q_INVOKABLE void toggleAutoMode();
+    bool isCurrentModelLocked() const { return m_lockedModels.contains(m_modelRef); }
+    Q_INVOKABLE void lockModel(const QString &ref, const QString &reason = QString());
+    Q_INVOKABLE void unlockModel(const QString &ref);
+    Q_INVOKABLE void unlockAllModels();
+    Q_INVOKABLE bool isModelLocked(const QString &ref) const { return m_lockedModels.contains(ref); }
     // Opens web/e-mail links from the chat in the default browser.
     Q_INVOKABLE void openLink(const QString &url);
     // Plain user text -> rich text with clickable links.
@@ -283,6 +290,11 @@ private:
     QStringList m_promptHistory;
     void loadPromptHistory();
     void savePromptHistory();
+
+    QSet<QString> m_lockedModels;
+    void loadLockedModels();
+    void saveLockedModels();
+    bool handleSlashCommand(const QString &name, const QString &args);
 
     bool m_updateAvailable = false;
     QString m_updateVersion;
