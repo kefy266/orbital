@@ -3,6 +3,7 @@
   "name": "Oto Mod",
   "version": "1.0.0",
   "author": "Orbital",
+  "enabledByDefault": false,
   "description": "Kullanıcıdan izin veya onay istemeden tüm dosya, komut ve araç işlemlerini tam otonom olarak otomatik yürütür.",
   "permissions": {
     "*": "allow",
