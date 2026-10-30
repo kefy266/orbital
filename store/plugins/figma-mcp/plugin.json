@@ -1,0 +1,15 @@
+{
+  "id": "figma-mcp",
+  "name": "Figma MCP",
+  "version": "1.0.0",
+  "author": "Orbital",
+  "description": "Figma resmi MCP sunucusu entegrasyonu (https://mcp.figma.com/mcp). Modelin Figma tasarım dosyalarını, katmanları ve bileşenleri doğrudan incelemesini sağlar.",
+  "enabledByDefault": true,
+  "skills": "skills",
+  "mcp": {
+    "figma": {
+      "type": "remote",
+      "url": "https://mcp.figma.com/mcp"
+    }
+  }
+}

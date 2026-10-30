@@ -144,6 +144,39 @@
       ]
     },
     {
+      "id": "limitsiz",
+      "type": "skill",
+      "name": "Limitsiz Mod",
+      "description": "Kodu kısaltmadan tam ve eksiksiz yazar; görevleri yarıda bırakmaz, derinlemesine ve ödünsüz çözer.",
+      "author": "Orbital",
+      "version": "1.0.0",
+      "tags": [
+        "otonom",
+        "verimlilik",
+        "kod"
+      ],
+      "files": [
+        "SKILL.md"
+      ]
+    },
+    {
+      "id": "figma-mcp",
+      "type": "skill",
+      "name": "Figma MCP & Tasarım",
+      "description": "Figma tasarım dosyalarını, katmanları, renk ve bileşenleri MCP araçlarıyla okuyarak koda dönüştürür.",
+      "author": "Orbital",
+      "version": "1.0.0",
+      "tags": [
+        "tasarım",
+        "figma",
+        "ui",
+        "mcp"
+      ],
+      "files": [
+        "SKILL.md"
+      ]
+    },
+    {
       "id": "git-araclari",
       "type": "plugin",
       "name": "Git Araçları",
@@ -271,6 +304,23 @@
       ],
       "files": [
         "kurallar.md",
+        "plugin.json"
+      ],
+      "runsCode": false
+    },
+    {
+      "id": "figma-mcp-sunucu",
+      "type": "plugin",
+      "name": "Figma MCP Sunucusu",
+      "description": "Figma resmi MCP sunucusu (https://mcp.figma.com/mcp) entegrasyonu. Modelin Figma tasarım dosyalarını ve katmanlarını doğrudan incelemesini sağlar.",
+      "author": "Orbital",
+      "version": "1.0.0",
+      "tags": [
+        "figma",
+        "tasarım",
+        "mcp"
+      ],
+      "files": [
         "plugin.json"
       ],
       "runsCode": false
