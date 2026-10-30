@@ -66,12 +66,15 @@ void LlmStream::startOpenAi(const LlmRequest &r)
             QJsonArray calls;
             for (const QJsonValue &c : m.value(QStringLiteral("tool_calls")).toArray()) {
                 const QJsonObject call = c.toObject();
-                calls << QJsonObject{
+                QJsonObject tcObj{
                     {QStringLiteral("id"), call.value(QStringLiteral("id"))},
                     {QStringLiteral("type"), QStringLiteral("function")},
                     {QStringLiteral("function"), QJsonObject{
                          {QStringLiteral("name"), call.value(QStringLiteral("name"))},
                          {QStringLiteral("arguments"), QString::fromUtf8(json(call.value(QStringLiteral("arguments")).toObject()))}}}};
+                if (call.contains(QStringLiteral("extra_content")))
+                    tcObj.insert(QStringLiteral("extra_content"), call.value(QStringLiteral("extra_content")));
+                calls << tcObj;
             }
             if (!calls.isEmpty())
                 out.insert(QStringLiteral("tool_calls"), calls);
@@ -151,6 +154,8 @@ void LlmStream::handleOpenAiEvent(const QJsonObject &e)
             const QString id = tc.value(QStringLiteral("id")).toString();
             if (!id.isEmpty())
                 call.id = id;
+            if (tc.contains(QStringLiteral("extra_content")))
+                call.extraContent = tc.value(QStringLiteral("extra_content")).toObject();
             const QJsonObject fn = tc.value(QStringLiteral("function")).toObject();
             const QString name = fn.value(QStringLiteral("name")).toString();
             if (!name.isEmpty() && call.name.isEmpty()) {
@@ -248,7 +253,7 @@ void LlmStream::handleAnthropicEvent(const QJsonObject &e)
         if (block.value(QStringLiteral("type")).toString() == QLatin1String("tool_use")) {
             const int index = e.value(QStringLiteral("index")).toInt();
             m_callIndex.insert(index, m_calls.size());
-            m_calls << PendingCall{block.value(QStringLiteral("id")).toString(), block.value(QStringLiteral("name")).toString(), {}};
+            m_calls << PendingCall{block.value(QStringLiteral("id")).toString(), block.value(QStringLiteral("name")).toString(), {}, {}};
             Q_EMIT toolCallStarted(m_calls.last().id, m_calls.last().name);
         }
     } else if (type == QLatin1String("content_block_delta")) {
@@ -318,12 +323,22 @@ QJsonObject LlmStream::assemble() const
     for (const PendingCall &c : m_calls) {
         if (c.name.isEmpty())
             continue;
-        calls << QJsonObject{{QStringLiteral("id"), c.id}, {QStringLiteral("name"), c.name},
-                             {QStringLiteral("arguments"), parseArgs(c.args)}};
+        QJsonObject tc{{QStringLiteral("id"), c.id}, {QStringLiteral("name"), c.name},
+                       {QStringLiteral("arguments"), parseArgs(c.args)}};
+        if (!c.extraContent.isEmpty())
+            tc.insert(QStringLiteral("extra_content"), c.extraContent);
+        calls << tc;
     }
     if (!calls.isEmpty())
         msg.insert(QStringLiteral("tool_calls"), calls);
     return msg;
+}
+
+static QString extractApiErrorMessage(const QByteArray &body)
+{
+    const QJsonDocument doc = QJsonDocument::fromJson(body);
+    QJsonObject root = doc.isObject() ? doc.object() : (doc.isArray() && !doc.array().isEmpty() ? doc.array().first().toObject() : QJsonObject{});
+    return root.value(QStringLiteral("error")).toObject().value(QStringLiteral("message")).toString();
 }
 
 void LlmStream::onFinished()
@@ -339,8 +354,7 @@ void LlmStream::onFinished()
     const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
     if (reply->error() != QNetworkReply::NoError || status >= 400) {
         m_errorBody += reply->readAll();
-        QString message = QJsonDocument::fromJson(m_errorBody).object().value(QStringLiteral("error")).toObject()
-                              .value(QStringLiteral("message")).toString();
+        QString message = extractApiErrorMessage(m_errorBody);
         if (message.isEmpty())
             message = QString::fromUtf8(m_errorBody).trimmed().left(400);
         if (message.isEmpty())
@@ -377,11 +391,18 @@ void fetchModels(QNetworkAccessManager *nam, const ProviderConfig &provider,
 QStringList parseModelIds(const QByteArray &json, const QString &filter)
 {
     const QRegularExpression rx(filter, QRegularExpression::CaseInsensitiveOption);
+    static const QRegularExpression geminiSkip(
+        QStringLiteral("(embedding|tts|image|live|transcribe|robotics|computer-use|native-audio|nano-banana|^gemini-2\\.5-)"),
+        QRegularExpression::CaseInsensitiveOption);
     QStringList out;
     for (const QJsonValue &v : QJsonDocument::fromJson(json).object().value(QStringLiteral("data")).toArray()) {
         QString id = v.toObject().value(QStringLiteral("id")).toString();
-        if (id.startsWith(QStringLiteral("models/"))) // Gemini's OpenAI-compatible listing
+        const bool isGemini = id.startsWith(QStringLiteral("models/"));
+        if (isGemini) { // Gemini's OpenAI-compatible listing
             id = id.mid(7);
+            if (geminiSkip.match(id).hasMatch())
+                continue;
+        }
         if (id.isEmpty() || (!filter.isEmpty() && !rx.match(id).hasMatch()))
             continue;
         out << id;
@@ -417,8 +438,7 @@ void testProvider(QNetworkAccessManager *nam, const ProviderConfig &provider,
             return;
         }
         if (status >= 400) {
-            QString message = QJsonDocument::fromJson(body).object().value(QStringLiteral("error")).toObject()
-                                  .value(QStringLiteral("message")).toString();
+            const QString message = extractApiErrorMessage(body);
             done(false, QStringLiteral("Sağlayıcı hata döndürdü (HTTP %1)%2").arg(status)
                             .arg(message.isEmpty() ? QString() : QStringLiteral(": ") + message.left(200)), {});
             return;

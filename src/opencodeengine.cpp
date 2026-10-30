@@ -161,7 +161,7 @@ void OpencodeEngine::buildOverlay(std::function<void(const QByteArray &)> done)
 
         QJsonArray skillPaths;
         for (const Skill &s : m_skills->skills())
-            if (s.enabled)
+            if (s.enabled && !s.description.trimmed().isEmpty())
                 skillPaths << s.dir;
         if (!skillPaths.isEmpty())
             overlay.insert(QStringLiteral("skills"), QJsonObject{{QStringLiteral("paths"), skillPaths}});
@@ -259,11 +259,17 @@ void OpencodeEngine::buildOverlay(std::function<void(const QByteArray &)> done)
                 QJsonObject models;
                 for (const QString &m : list)
                     models.insert(m, QJsonObject{{QStringLiteral("name"), m}, {QStringLiteral("tool_call"), true}});
-                QJsonObject options{{QStringLiteral("baseURL"), p.baseUrl}};
+                const bool isGoogle = p.id == QLatin1String("gemini") || p.id == QLatin1String("google")
+                                   || p.baseUrl.contains(QLatin1String("generativelanguage.googleapis.com"));
+                QString baseUrl = p.baseUrl;
+                if (isGoogle && baseUrl.endsWith(QStringLiteral("/openai")))
+                    baseUrl.chop(7);
+                QJsonObject options{{QStringLiteral("baseURL"), baseUrl}};
                 if (!key.isEmpty())
                     options.insert(QStringLiteral("apiKey"), key);
                 providerJson->insert(p.id, QJsonObject{{QStringLiteral("name"), p.name},
-                                                       {QStringLiteral("npm"), QStringLiteral("@ai-sdk/openai-compatible")},
+                                                       {QStringLiteral("npm"), isGoogle ? QStringLiteral("@ai-sdk/google")
+                                                                                        : QStringLiteral("@ai-sdk/openai-compatible")},
                                                        {QStringLiteral("options"), options},
                                                        {QStringLiteral("models"), models}});
             }
@@ -291,6 +297,13 @@ void OpencodeEngine::launch()
         m_auth = "Basic " + QByteArray("opencode:" + password).toBase64();
 
         const QString home = homeDir();
+        // Prevent unmanaged agent/skill/command files inside opencode-home from bloating prompts.
+        const QString ocCfgDir = home + QStringLiteral("/config/opencode");
+        QDir(ocCfgDir + QStringLiteral("/agents")).removeRecursively();
+        QDir(ocCfgDir + QStringLiteral("/commands")).removeRecursively();
+        QDir(ocCfgDir + QStringLiteral("/skills")).removeRecursively();
+        QFile::remove(ocCfgDir + QStringLiteral("/opencode.json"));
+
         QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
         // Isolate from any opencode the user has installed: own config, data, state and cache.
         env.insert(QStringLiteral("XDG_CONFIG_HOME"), home + QStringLiteral("/config"));
@@ -303,6 +316,9 @@ void OpencodeEngine::launch()
         env.insert(QStringLiteral("OPENCODE_CONFIG_CONTENT"), QString::fromUtf8(overlay));
         env.remove(QStringLiteral("OPENCODE_CONFIG"));
         env.remove(QStringLiteral("OPENCODE_CONFIG_DIR"));
+
+        if (m_directory.isEmpty() || m_directory == QDir::homePath() || m_directory == QStringLiteral("/"))
+            m_directory = Paths::noFolderDir();
 
         m_stdout.clear();
         m_proc = new QProcess(this);
@@ -512,7 +528,27 @@ void OpencodeEngine::handleEvent(const QString &type, const QJsonObject &p)
         else
             Q_EMIT textDelta(sid, partId, delta);
     } else if (type == QLatin1String("session.status")) {
-        Q_EMIT busyChanged(sid, p.value(QStringLiteral("status")).toObject().value(QStringLiteral("type")).toString() != QLatin1String("idle"));
+        const QJsonObject st = p.value(QStringLiteral("status")).toObject();
+        const QString stType = st.value(QStringLiteral("type")).toString();
+        if (stType == QLatin1String("retry")) {
+            QString msg = st.value(QStringLiteral("message")).toString();
+            const QJsonObject action = st.value(QStringLiteral("action")).toObject();
+            if (!action.isEmpty()) {
+                const QString title = action.value(QStringLiteral("title")).toString();
+                const QString actMsg = action.value(QStringLiteral("message")).toString();
+                if (!title.isEmpty() && !msg.contains(title, Qt::CaseInsensitive))
+                    msg = msg.isEmpty() ? title : (msg + QStringLiteral(" — ") + title);
+                if (!actMsg.isEmpty() && !msg.contains(actMsg, Qt::CaseInsensitive))
+                    msg += QStringLiteral(" (") + actMsg + QLatin1Char(')');
+            }
+            if (msg.isEmpty())
+                msg = tr("Model yanıt veremedi (kota veya hız sınırına ulaşıldı).");
+            abort(sid);
+            Q_EMIT busyChanged(sid, false);
+            Q_EMIT errorOccurred(sid, msg);
+            return;
+        }
+        Q_EMIT busyChanged(sid, stType != QLatin1String("idle"));
     } else if (type == QLatin1String("session.idle")) {
         Q_EMIT busyChanged(sid, false);
     } else if (type == QLatin1String("session.error")) {

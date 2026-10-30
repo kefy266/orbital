@@ -60,7 +60,7 @@ private:
 
     QString m_text;
     QString m_reasoning;
-    struct PendingCall { QString id; QString name; QString args; };
+    struct PendingCall { QString id; QString name; QString args; QJsonObject extraContent; };
     QList<PendingCall> m_calls;
     QHash<int, int> m_callIndex; // provider index -> m_calls position
     QJsonObject m_usage;

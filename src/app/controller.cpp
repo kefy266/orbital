@@ -46,7 +46,7 @@ AppController::AppController(QObject *parent)
 
     const QJsonObject settings = Paths::loadSettings();
     m_directory = settings.value(QStringLiteral("lastProject")).toString();
-    if (m_directory.isEmpty() || !QDir(m_directory).exists())
+    if (m_directory.isEmpty() || !QDir(m_directory).exists() || m_directory == QDir::homePath() || m_directory == QStringLiteral("/"))
         m_directory = Paths::noFolderDir();
 
     m_engines.insert(QStringLiteral("native"), new NativeEngine(m_skills, m_plugins, this));
@@ -245,8 +245,12 @@ static bool isLimitOrQuotaError(const QString &msg)
 {
     const QString l = msg.toLower();
     return l.contains(QStringLiteral("too many requests"))
+        || l.contains(QStringLiteral("free usage exceeded"))
         || l.contains(QStringLiteral("free usage limit reached"))
+        || l.contains(QStringLiteral("free limit reached"))
+        || l.contains(QStringLiteral("go limit reached"))
         || l.contains(QStringLiteral("limit reached"))
+        || l.contains(QStringLiteral("usage limit"))
         || l.contains(QStringLiteral("rate limit"))
         || l.contains(QStringLiteral("rate_limit"))
         || l.contains(QStringLiteral("credit balance is too low"))
@@ -254,6 +258,8 @@ static bool isLimitOrQuotaError(const QString &msg)
         || l.contains(QStringLiteral("resourceexhausted"))
         || l.contains(QStringLiteral("insufficient_quota"))
         || l.contains(QStringLiteral("exceeded your current quota"))
+        || l.contains(QStringLiteral("no longer available"))
+        || l.contains(QStringLiteral("overloaded"))
         || l.contains(QStringLiteral("billing"))
         || l.contains(QStringLiteral("429"));
 }
@@ -472,6 +478,38 @@ void AppController::refreshModels()
             haveFree = haveFree || m.ref() == kFreeDefault;
         }
         m_modelRef = found ? wanted : haveFree ? kFreeDefault : (models.isEmpty() ? QString() : models.first().ref());
+        if (m_lockedModels.contains(m_modelRef)) {
+            static const QStringList kPreferredFallbacks{
+                QStringLiteral("gemini/gemini-3.5-flash"),
+                QStringLiteral("gemini/gemini-3.5-flash-lite"),
+                QStringLiteral("gemini/gemini-3-flash-preview"),
+                QStringLiteral("gemini/gemini-3.1-flash-lite"),
+                QStringLiteral("opencode/deepseek-v4.1-flash-free"),
+            };
+            QString unlocked;
+            for (const QString &pref : kPreferredFallbacks) {
+                if (m_lockedModels.contains(pref))
+                    continue;
+                for (const ModelChoice &m : models) {
+                    if (m.ref() == pref) {
+                        unlocked = pref;
+                        break;
+                    }
+                }
+                if (!unlocked.isEmpty())
+                    break;
+            }
+            if (unlocked.isEmpty()) {
+                for (const ModelChoice &m : models) {
+                    if (!m_lockedModels.contains(m.ref())) {
+                        unlocked = m.ref();
+                        break;
+                    }
+                }
+            }
+            if (!unlocked.isEmpty())
+                m_modelRef = unlocked;
+        }
         Q_EMIT modelsChanged();
         Q_EMIT modelChanged();
         if (models.isEmpty())
@@ -1098,25 +1136,74 @@ void AppController::saveLockedModels()
 
 void AppController::lockModel(const QString &ref, const QString &reason)
 {
-    Q_UNUSED(reason);
     if (ref.isEmpty())
         return;
-    if (!m_lockedModels.contains(ref)) {
-        m_lockedModels.insert(ref);
-        saveLockedModels();
-        for (int i = 0; i < m_models.size(); ++i) {
-            QVariantMap m = m_models.at(i).toMap();
-            if (m.value(QStringLiteral("ref")).toString() == ref) {
-                m.insert(QStringLiteral("locked"), true);
-                m_models[i] = m;
+    const QString low = reason.toLower();
+    const QString providerPrefix = ref.section(QLatin1Char('/'), 0, 0) + QLatin1Char('/');
+    const bool lockAllProvider = (providerPrefix == QLatin1String("opencode/")
+                                  && (low.contains(QStringLiteral("free usage exceeded"))
+                                      || low.contains(QStringLiteral("free limit reached"))
+                                      || low.contains(QStringLiteral("free usage limit reached"))))
+                              || (providerPrefix == QLatin1String("anthropic/")
+                                  && low.contains(QStringLiteral("credit balance is too low")));
+
+    m_lockedModels.insert(ref);
+    for (int i = 0; i < m_models.size(); ++i) {
+        QVariantMap m = m_models.at(i).toMap();
+        const QString r = m.value(QStringLiteral("ref")).toString();
+        if (r == ref || (lockAllProvider && r.startsWith(providerPrefix))) {
+            m_lockedModels.insert(r);
+            m.insert(QStringLiteral("locked"), true);
+            m_models[i] = m;
+        }
+    }
+    saveLockedModels();
+    Q_EMIT modelsChanged();
+
+    const QString name = prettyModelName(ref.section(QLatin1Char('/'), 1), nullptr);
+    if (m_lockedModels.contains(m_modelRef)) {
+        static const QStringList kPreferredFallbacks{
+            QStringLiteral("gemini/gemini-3.5-flash"),
+            QStringLiteral("gemini/gemini-3.5-flash-lite"),
+            QStringLiteral("gemini/gemini-3-flash-preview"),
+            QStringLiteral("gemini/gemini-3.1-flash-lite"),
+            QStringLiteral("opencode/deepseek-v4.1-flash-free"),
+        };
+        QString fallback;
+        QString fallbackName;
+        for (const QString &pref : kPreferredFallbacks) {
+            if (m_lockedModels.contains(pref))
+                continue;
+            for (const QVariant &v : std::as_const(m_models)) {
+                const QVariantMap m = v.toMap();
+                if (m.value(QStringLiteral("ref")).toString() == pref) {
+                    fallback = pref;
+                    fallbackName = m.value(QStringLiteral("name")).toString();
+                    break;
+                }
+            }
+            if (!fallback.isEmpty())
                 break;
+        }
+        if (fallback.isEmpty()) {
+            for (const QVariant &v : std::as_const(m_models)) {
+                const QVariantMap m = v.toMap();
+                const QString r = m.value(QStringLiteral("ref")).toString();
+                if (!r.isEmpty() && !m_lockedModels.contains(r)) {
+                    fallback = r;
+                    fallbackName = m.value(QStringLiteral("name")).toString();
+                    break;
+                }
             }
         }
-        Q_EMIT modelsChanged();
-        if (ref == m_modelRef)
-            Q_EMIT modelChanged();
+        if (!fallback.isEmpty() && fallback != m_modelRef) {
+            setModel(fallback);
+            Q_EMIT toast(QStringLiteral("Model kotası doldu (🔒): %1 → Otomatik olarak %2 modeline geçildi.")
+                             .arg(name.isEmpty() ? ref : name, fallbackName.isEmpty() ? fallback : fallbackName));
+            return;
+        }
+        Q_EMIT modelChanged();
     }
-    const QString name = prettyModelName(ref.section(QLatin1Char('/'), 1), nullptr);
     Q_EMIT toast(QStringLiteral("Model kotası/limiti doldu (🔒): %1. Farklı bir modele geçebilirsiniz.").arg(name.isEmpty() ? ref : name));
 }
 
@@ -2280,7 +2367,7 @@ void AppController::applySettings()
 QString AppController::appVersion() const
 {
     const QString ver = QCoreApplication::applicationVersion();
-    return ver.isEmpty() ? QStringLiteral("0.4.0") : ver;
+    return ver.isEmpty() ? QStringLiteral("0.4.1") : ver;
 }
 
 void AppController::checkForUpdates(bool silent)

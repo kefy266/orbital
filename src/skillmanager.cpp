@@ -187,7 +187,10 @@ bool SkillManager::importFolder(const QString &folder, QString *error, bool repl
     QDirIterator it(folder, QDir::Files, QDirIterator::Subdirectories);
     while (it.hasNext()) {
         const QString src = it.next();
-        const QString dst = target + QLatin1Char('/') + QDir(folder).relativeFilePath(src);
+        const QString rel = QDir(folder).relativeFilePath(src);
+        if (rel != QLatin1String("SKILL.md") && rel.endsWith(QLatin1String("/SKILL.md"), Qt::CaseInsensitive))
+            continue;
+        const QString dst = target + QLatin1Char('/') + rel;
         QDir().mkpath(QFileInfo(dst).absolutePath());
         QFile::copy(src, dst);
     }
