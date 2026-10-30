@@ -471,8 +471,10 @@ void OpencodeEngine::handleEvent(const QString &type, const QJsonObject &p)
             return;
         }
         if (info.contains(QStringLiteral("error")) && info.value(QStringLiteral("error")).toObject().value(QStringLiteral("name")).toString()
-                                                         != QLatin1String("MessageAbortedError"))
+                                                         != QLatin1String("MessageAbortedError")) {
+            Q_EMIT busyChanged(msgSid, false);
             Q_EMIT errorOccurred(msgSid, errorText(info.value(QStringLiteral("error")).toObject()));
+        }
         if (info.value(QStringLiteral("time")).toObject().contains(QStringLiteral("completed"))) {
             const QJsonObject t = info.value(QStringLiteral("tokens")).toObject();
             Q_EMIT usageUpdated(msgSid, t.value(QStringLiteral("input")).toInt() + t.value(QStringLiteral("cache")).toObject().value(QStringLiteral("read")).toInt(),
@@ -515,6 +517,7 @@ void OpencodeEngine::handleEvent(const QString &type, const QJsonObject &p)
         Q_EMIT busyChanged(sid, false);
     } else if (type == QLatin1String("session.error")) {
         const QJsonObject err = p.value(QStringLiteral("error")).toObject();
+        Q_EMIT busyChanged(sid, false);
         if (err.value(QStringLiteral("name")).toString() != QLatin1String("MessageAbortedError"))
             Q_EMIT errorOccurred(sid, errorText(err));
     } else if (type == QLatin1String("permission.asked")) {

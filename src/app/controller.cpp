@@ -25,6 +25,7 @@
 #include <QTextStream>
 #include <QTimer>
 #include <QUrl>
+#include <QUrlQuery>
 #include <memory>
 
 static QString prettyModelName(QString name, bool *free);
@@ -66,6 +67,7 @@ void AppController::start()
     // One engine for everyone: free cloud models plus any provider the user connects.
     switchEngine(QStringLiteral("opencode"));
     QTimer::singleShot(4000, this, [this] { checkForUpdates(true); });
+    QTimer::singleShot(6000, this, [this] { syncOfficialSkills(); });
 }
 
 void AppController::reloadExtensions()
@@ -272,6 +274,7 @@ void AppController::connectEngine()
             });
     connect(e, &Engine::busyChanged, this, [this](const QString &sid, bool busy) { setBusyFor(sid, busy); });
     connect(e, &Engine::errorOccurred, this, [this](const QString &sid, const QString &message) {
+        setBusyFor(sid, false);
         if (!isCurrent(sid))
             return;
         setThinking(false);
@@ -1543,7 +1546,15 @@ void AppController::fetchStoreFile(const QString &path, std::function<void(const
         done(f.readAll(), {});
         return;
     }
-    QNetworkRequest req(QUrl(base + QLatin1Char('/') + path));
+    QUrl url(base + QLatin1Char('/') + path);
+    QUrlQuery query(url);
+    query.addQueryItem(QStringLiteral("_t"), QString::number(QDateTime::currentMSecsSinceEpoch()));
+    url.setQuery(query);
+
+    QNetworkRequest req(url);
+    req.setAttribute(QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::AlwaysNetwork);
+    req.setRawHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    req.setRawHeader("Pragma", "no-cache");
     req.setTransferTimeout(20000);
     QNetworkReply *reply = m_nam->get(req);
     connect(reply, &QNetworkReply::finished, this, [reply, done] {
@@ -1590,6 +1601,67 @@ void AppController::loadStore()
                 m_storeError = QStringLiteral("Mağaza kataloğu okunamadı.");
         }
         Q_EMIT storeChanged();
+    });
+}
+
+void AppController::syncOfficialSkills()
+{
+    fetchStoreFile(QStringLiteral("index.json"), [this](const QByteArray &data, const QString &error) {
+        if (!error.isEmpty())
+            return;
+        const QJsonArray items = QJsonDocument::fromJson(data).object().value(QStringLiteral("items")).toArray();
+        if (items.isEmpty())
+            return;
+
+        // Auto-sync all official skills from the GitHub Pages store
+        auto remaining = std::make_shared<QList<QJsonObject>>();
+        for (const QJsonValue &v : items) {
+            const QJsonObject item = v.toObject();
+            if (item.value(QStringLiteral("type")).toString() == QLatin1String("skill"))
+                remaining->append(item);
+        }
+
+        auto updatedCount = std::make_shared<int>(0);
+        auto syncNext = std::make_shared<std::function<void()>>();
+        *syncNext = [this, remaining, updatedCount, syncNext] {
+            if (remaining->isEmpty()) {
+                if (*updatedCount > 0) {
+                    reloadExtensions();
+                    refreshCommands();
+                    m_settingsDirty = true;
+                    Q_EMIT toast(QStringLiteral("GitHub Pages'ten %1 skill eşitlendi").arg(*updatedCount));
+                }
+                *syncNext = nullptr;
+                return;
+            }
+            const QJsonObject item = remaining->takeFirst();
+            const QString id = item.value(QStringLiteral("id")).toString();
+            const QString targetDir = Paths::skillsDir() + QLatin1Char('/') + id;
+            const QString skillPath = targetDir + QStringLiteral("/SKILL.md");
+
+            fetchStoreFile(QStringLiteral("skills/") + id + QStringLiteral("/SKILL.md"),
+                           [this, targetDir, skillPath, updatedCount, syncNext](const QByteArray &content, const QString &err) {
+                               if (err.isEmpty() && !content.isEmpty()) {
+                                   bool changed = true;
+                                   QFile cur(skillPath);
+                                   if (cur.open(QIODevice::ReadOnly)) {
+                                       if (cur.readAll() == content)
+                                           changed = false;
+                                       cur.close();
+                                   }
+                                   if (changed) {
+                                       QDir().mkpath(targetDir);
+                                       if (cur.open(QIODevice::WriteOnly)) {
+                                           cur.write(content);
+                                           cur.close();
+                                           (*updatedCount)++;
+                                       }
+                                   }
+                               }
+                               (*syncNext)();
+                           });
+        };
+        (*syncNext)();
     });
 }
 

@@ -178,6 +178,7 @@ public:
     bool storeLoading() const { return m_storeLoading; }
     QString storeError() const { return m_storeError; }
     Q_INVOKABLE void loadStore();
+    Q_INVOKABLE void syncOfficialSkills();
     Q_INVOKABLE void installStoreItem(const QString &id);
     Q_INVOKABLE void removeStoreItem(const QString &id);
 
