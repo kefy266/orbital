@@ -50,12 +50,12 @@ win32 {
     TARGET = Orbital
     QMAKE_TARGET_DESCRIPTION = Orbital
     QMAKE_TARGET_PRODUCT = Orbital
-    VERSION = 0.3.8
+    VERSION = 0.3.9
     RC_ICONS = resources/orbital.ico
 }
 macx {
     TARGET = Orbital
-    VERSION = 0.3.8
+    VERSION = 0.3.9
     ICON = resources/orbital.icns
     QMAKE_TARGET_BUNDLE_PREFIX = io.github.kefy266
     QMAKE_MACOSX_DEPLOYMENT_TARGET = 12.0

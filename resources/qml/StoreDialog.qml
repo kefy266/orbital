@@ -65,7 +65,6 @@ Popup {
                         font.family: Theme.font; font.pixelSize: Theme.fontUi; color: Theme.textMuted
                     }
                 }
-                OButton { Layout.alignment: Qt.AlignTop; text: "GitHub Pages'ten Eşitle"; iconName: "refresh"; variant: "ghost"; onClicked: App.syncOfficialSkills() }
                 OButton { Layout.alignment: Qt.AlignTop; text: "GitHub'dan skill"; iconName: "download"; variant: "ghost"; onClicked: githubSkillDialog.openDialog() }
                 IconButton { Layout.alignment: Qt.AlignTop; iconName: "x"; tip: "Kapat (Esc)"; onClicked: store.close() }
             }

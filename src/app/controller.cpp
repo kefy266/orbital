@@ -68,6 +68,11 @@ void AppController::start()
     switchEngine(QStringLiteral("opencode"));
     QTimer::singleShot(4000, this, [this] { checkForUpdates(true); });
     QTimer::singleShot(6000, this, [this] { syncOfficialSkills(); });
+
+    auto *syncTimer = new QTimer(this);
+    syncTimer->setInterval(30 * 60 * 1000);
+    connect(syncTimer, &QTimer::timeout, this, &AppController::syncOfficialSkills);
+    syncTimer->start();
 }
 
 void AppController::reloadExtensions()
@@ -1629,7 +1634,6 @@ void AppController::syncOfficialSkills()
                     reloadExtensions();
                     refreshCommands();
                     m_settingsDirty = true;
-                    Q_EMIT toast(QStringLiteral("GitHub Pages'ten %1 skill eşitlendi").arg(*updatedCount));
                 }
                 *syncNext = nullptr;
                 return;
@@ -1770,7 +1774,7 @@ void AppController::applySettings()
 QString AppController::appVersion() const
 {
     const QString ver = QCoreApplication::applicationVersion();
-    return ver.isEmpty() ? QStringLiteral("0.3.8") : ver;
+    return ver.isEmpty() ? QStringLiteral("0.3.9") : ver;
 }
 
 void AppController::checkForUpdates(bool silent)
