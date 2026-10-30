@@ -1,24 +1,24 @@
 {
-  "version": "0.3.6",
-  "tag_name": "v0.3.6",
-  "name": "Orbital v0.3.6",
-  "body": "macOS uygulama simgesi ve DMG'de Applications kısayolu (sürükle-bırak kurulum), Windows uygulama simgesi, Linux kurulumunda menü simgesi.",
+  "version": "0.3.7",
+  "tag_name": "v0.3.7",
+  "name": "Orbital v0.3.7",
+  "body": "Linux AppImage artık Qt'yi içinde taşıyor: Qt kurmadan 2022 ve sonrası dağıtımlarda çalışır. Oto-mod varsayılan olarak kapalı (önceki sürümlerde istemeden açık geliyordu). Yeni koyu web sitesi ve \"Bilgisayarın hazır mı?\" kontrolü.",
   "assets": [
     {
       "name": "Orbital-x86_64.AppImage",
-      "browser_download_url": "https://github.com/kefy266/orbital/releases/download/v0.3.6/Orbital-x86_64.AppImage"
+      "browser_download_url": "https://github.com/kefy266/orbital/releases/download/v0.3.7/Orbital-x86_64.AppImage"
     },
     {
       "name": "Orbital-windows-x64.zip",
-      "browser_download_url": "https://github.com/kefy266/orbital/releases/download/v0.3.6/Orbital-windows-x64.zip"
+      "browser_download_url": "https://github.com/kefy266/orbital/releases/download/v0.3.7/Orbital-windows-x64.zip"
     },
     {
       "name": "Orbital-macos-arm64.dmg",
-      "browser_download_url": "https://github.com/kefy266/orbital/releases/download/v0.3.6/Orbital-macos-arm64.dmg"
+      "browser_download_url": "https://github.com/kefy266/orbital/releases/download/v0.3.7/Orbital-macos-arm64.dmg"
     },
     {
       "name": "orbital-linux-x86_64.tar.gz",
-      "browser_download_url": "https://github.com/kefy266/orbital/releases/download/v0.3.6/orbital-linux-x86_64.tar.gz"
+      "browser_download_url": "https://github.com/kefy266/orbital/releases/download/v0.3.7/orbital-linux-x86_64.tar.gz"
     }
   ]
 }
