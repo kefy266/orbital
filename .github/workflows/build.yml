@@ -138,6 +138,7 @@ jobs:
           ./linuxdeploy --appimage-extract-and-run --appdir AppDir --output appimage
           [ -f Orbital-x86_64.AppImage ] || mv Orbital*-x86_64.AppImage Orbital-x86_64.AppImage
           tar -C AppDir -czf orbital-linux-x86_64.tar.gz .
+          scripts/make_deb.sh AppDir "$(sed -n 's/^ *VERSION *= *//p' orbital.pro | head -1)" Orbital-linux-amd64.deb
 
       - name: Smoke test (bundled AppImage, offscreen)
         env:
@@ -153,7 +154,17 @@ jobs:
           env -u LD_LIBRARY_PATH -u QT_PLUGIN_PATH -u QML2_IMPORT_PATH -u QT_ROOT_DIR \
             timeout 60 ./Orbital-x86_64.AppImage --appimage-extract-and-run
           test -s smoke-appimage.png
-          ls -la Orbital-x86_64.AppImage orbital-linux-x86_64.tar.gz
+          ls -la Orbital-x86_64.AppImage orbital-linux-x86_64.tar.gz Orbital-linux-amd64.deb
+
+      - name: Smoke test (.deb installs and runs)
+        run: |
+          sudo apt-get install -y ./Orbital-linux-amd64.deb
+          env -u LD_LIBRARY_PATH -u QT_PLUGIN_PATH -u QML2_IMPORT_PATH -u QT_ROOT_DIR \
+            QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software QT_FORCE_STDERR_LOGGING=1 \
+            ORBITAL_SCREENSHOT=$PWD/smoke-deb.png ORBITAL_SCREENSHOT_DELAY=4000 \
+            XDG_CONFIG_HOME=$RUNNER_TEMP/cfg-deb XDG_DATA_HOME=$RUNNER_TEMP/data-deb timeout 60 orbital
+          test -s smoke-deb.png
+          sudo apt-get remove -y orbital
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -162,6 +173,7 @@ jobs:
           path: |
             Orbital-x86_64.AppImage
             orbital-linux-x86_64.tar.gz
+            Orbital-linux-amd64.deb
             smoke-appimage.png
 
   windows:
@@ -273,5 +285,6 @@ jobs:
           files: |
             artifacts/linux/Orbital-x86_64.AppImage
             artifacts/linux/orbital-linux-x86_64.tar.gz
+            artifacts/linux/Orbital-linux-amd64.deb
             artifacts/windows/Orbital-windows-x64.zip
             artifacts/macos/Orbital-macos-arm64.dmg

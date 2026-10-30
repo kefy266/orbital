@@ -2436,7 +2436,9 @@ void AppController::checkForUpdates(bool silent)
                     break;
                 }
 #else
-                if (name.endsWith(QStringLiteral(".AppImage"), Qt::CaseInsensitive)) {
+                // A .deb install updates through the system package installer, everything else as an AppImage.
+                const bool deb = qEnvironmentVariable("ORBITAL_PACKAGE") == QLatin1String("deb");
+                if (name.endsWith(deb ? QStringLiteral(".deb") : QStringLiteral(".AppImage"), Qt::CaseInsensitive)) {
                     m_updateDownloadUrl = a.value(QStringLiteral("browser_download_url")).toString();
                     m_updateAssetSize = a.value(QStringLiteral("size")).toInteger();
                     break;
@@ -2528,7 +2530,9 @@ void AppController::applyUpdate()
     const QString destFile = QDir::tempPath() + QDir::separator() + QStringLiteral("Orbital-update.dmg");
 #else
     const QString appImagePath = qEnvironmentVariable("APPIMAGE");
-    const QString destFile = (!appImagePath.isEmpty())
+    const QString destFile = qEnvironmentVariable("ORBITAL_PACKAGE") == QLatin1String("deb")
+                                 ? (QDir::tempPath() + QDir::separator() + QStringLiteral("orbital_amd64.deb"))
+                             : (!appImagePath.isEmpty())
                                  ? (appImagePath + QStringLiteral(".update"))
                                  : (QDir::tempPath() + QDir::separator() + QStringLiteral("Orbital-x86_64.AppImage"));
 #endif
@@ -2638,6 +2642,15 @@ void AppController::applyUpdate()
             Q_EMIT toast(m_updateStatus);
         }
 #else
+        if (qEnvironmentVariable("ORBITAL_PACKAGE") == QLatin1String("deb")) {
+            // Installing a .deb needs root: hand it to the desktop's software installer.
+            m_updating = false;
+            m_updateStatus = QStringLiteral("Kurulum penceresi açıldı; kurduktan sonra Orbital'i yeniden başlat.");
+            Q_EMIT updateChanged();
+            if (!QDesktopServices::openUrl(QUrl::fromLocalFile(destFile)))
+                Q_EMIT toast(QStringLiteral("Paket indirildi: %1 — terminalde: sudo apt install %1").arg(destFile));
+            return;
+        }
         const QString appImagePath = qEnvironmentVariable("APPIMAGE");
         QFile::setPermissions(destFile, QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner |
                                             QFileDevice::ReadGroup | QFileDevice::ExeGroup |

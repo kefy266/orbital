@@ -129,6 +129,8 @@
                    font-size: 12.5px; line-height: 1.6; white-space: pre; overflow-x: auto; }
   .downloads .button { margin-top: auto; justify-content: center; }
   .downloads .card > :nth-last-child(2) { margin-bottom: 22px; }
+  .downloads .alt-dl { margin-top: 10px; justify-content: center; }
+  .downloads .card > .button.primary:has(+ .alt-dl) { margin-bottom: 0; }
   .downloads .hint { margin-top: 10px; font-size: 12.5px; color: var(--faint); }
 
   /* system check */
@@ -213,7 +215,8 @@
         <p class="micro-note">Doğrudan indir:
           <a href="https://github.com/kefy266/orbital/releases/latest/download/Orbital-windows-x64.zip">Windows</a> ·
           <a href="https://github.com/kefy266/orbital/releases/latest/download/Orbital-macos-arm64.dmg">macOS</a> ·
-          <a href="https://github.com/kefy266/orbital/releases/latest/download/Orbital-x86_64.AppImage">Linux</a>
+          <a href="https://github.com/kefy266/orbital/releases/latest/download/Orbital-x86_64.AppImage">Linux</a> ·
+          <a href="https://github.com/kefy266/orbital/releases/latest/download/Orbital-linux-amd64.deb">.deb</a>
         </p>
       </div>
       <div class="hero-art">
@@ -417,6 +420,7 @@
           <pre>chmod +x Orbital-x86_64.AppImage</pre>
           <a class="button primary" href="https://github.com/kefy266/orbital/releases/latest/download/Orbital-x86_64.AppImage">
             <svg viewBox="0 0 24 24"><path d="M12 4v11M7 10.5 12 15.5l5-5M5 20h14"/></svg>Linux (.AppImage)</a>
+          <a class="button alt-dl" href="https://github.com/kefy266/orbital/releases/latest/download/Orbital-linux-amd64.deb">Ubuntu / Debian (.deb)</a>
         </article>
       </div>
       <p class="build-note">Kaynaktan derlemek ya da <code>.tar.gz</code> paketini indirmek mi istiyorsun? Adımlar <a href="https://github.com/kefy266/orbital#kaynaktan-derleme">README</a>'de. Her commit otomatik derlenip test edilir.</p>
