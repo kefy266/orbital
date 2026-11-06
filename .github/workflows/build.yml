@@ -256,10 +256,40 @@ jobs:
           rm -rf build/Orbital.app/Contents/PlugIns/sqldrivers
           codesign --force --deep --sign - build/Orbital.app
           test -f build/Orbital.app/Contents/Resources/orbital.icns
-          # Disk image with the usual "drag Orbital onto Applications" layout.
+          # Disk image with the usual "drag Orbital onto Applications" layout + "Yine de Aç" helper.
           mkdir -p dmg
           cp -R build/Orbital.app dmg/
           ln -s /Applications dmg/Applications
+          cat << 'EOF' > "dmg/Yine de Aç (İlk Çalıştırma).command"
+#!/bin/bash
+clear
+echo "========================================================"
+echo "      Orbital — macOS Güvenlik İzni & Başlatıcı"
+echo "========================================================"
+echo ""
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+APP_TARGET="/Applications/Orbital.app"
+DMG_APP="$DIR/Orbital.app"
+
+if [ ! -d "$APP_TARGET" ] && [ -d "$DMG_APP" ]; then
+    echo "1/3 Orbital /Applications klasörüne kopyalanıyor..."
+    cp -R "$DMG_APP" /Applications/
+fi
+
+if [ -d "$APP_TARGET" ]; then
+    echo "2/3 Apple Gatekeeper güvenlik kilidi (karantina) kaldırılıyor..."
+    xattr -cr "$APP_TARGET" 2>/dev/null
+    echo "3/3 Orbital başlatılıyor..."
+    open "$APP_TARGET"
+    echo ""
+    echo "✓ Orbital başarıyla başlatıldı!"
+    echo "Artık bu pencereyi kapatabilirsiniz."
+else
+    echo "Hata: Orbital.app bulunamadı."
+fi
+exit 0
+EOF
+          chmod +x "dmg/Yine de Aç (İlk Çalıştırma).command"
           hdiutil create -volname Orbital -srcfolder dmg -ov -format UDZO Orbital-macos-arm64.dmg
 
       - uses: actions/upload-artifact@v4
