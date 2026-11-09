@@ -46,8 +46,6 @@ QStringList Plugin::summary() const
         out << QObject::tr("%1 talimat").arg(n);
     if (int n = count("tools"))
         out << QObject::tr("%1 araç").arg(n);
-    if (int n = count("opencodePlugins"))
-        out << QObject::tr("%1 sunucu eklentisi").arg(n);
     if (manifest.value(QStringLiteral("hooks")).toObject().contains(QStringLiteral("beforePrompt")))
         out << QObject::tr("prompt hook");
     return out;
@@ -281,20 +279,6 @@ QStringList PluginManager::instructionFiles() const
             continue;
         for (const QJsonValue &v : p.manifest.value(QStringLiteral("instructions")).toArray())
             out << QDir(p.dir).absoluteFilePath(v.toString());
-    }
-    return out;
-}
-
-QStringList PluginManager::opencodePlugins() const
-{
-    QStringList out;
-    for (const Plugin &p : m_plugins) {
-        if (!p.enabled)
-            continue;
-        for (const QJsonValue &v : p.manifest.value(QStringLiteral("opencodePlugins")).toArray()) {
-            const QString spec = v.toString();
-            out << (spec.startsWith(QStringLiteral("./")) ? QStringLiteral("file://") + QDir(p.dir).absoluteFilePath(spec) : spec);
-        }
     }
     return out;
 }

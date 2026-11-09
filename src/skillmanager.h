@@ -5,8 +5,8 @@
 #include <QString>
 
 // A skill is a folder holding a SKILL.md: YAML-ish frontmatter (name, description)
-// followed by markdown instructions. Enabled skills are handed to opencode,
-// which exposes them to the model and lets the user attach them to prompts.
+// followed by markdown instructions. Enabled skills are listed to the model
+// (the `skill` tool loads them) and lets the user attach them to prompts.
 struct Skill
 {
     QString name;

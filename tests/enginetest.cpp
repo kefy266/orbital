@@ -1,8 +1,7 @@
 // Headless smoke test: drives an Orbital engine through one prompt and prints the event stream.
-// Usage: enginetest <native|opencode> <projectDir> <provider/model> <prompt>
+// Usage: enginetest native <projectDir> <provider/model> <prompt> [skill]
 #include "../src/config.h"
 #include "../src/nativeengine.h"
-#include "../src/opencodeengine.h"
 #include "../src/paths.h"
 #include "../src/pluginmanager.h"
 #include "../src/skillmanager.h"
@@ -17,15 +16,14 @@ int main(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
     const QStringList a = app.arguments();
-    if (a.size() < 5) { out("usage: enginetest <native|opencode> <dir> <provider/model> <prompt> [skill]"); return 2; }
+    if (a.size() < 5) { out("usage: enginetest native <dir> <provider/model> <prompt> [skill]"); return 2; }
     Config::ensureDefault();
     Paths::installBundledContent();
     PluginManager plugins; plugins.reload();
     SkillManager skills; skills.setPluginSkillRoots(plugins.skillRoots()); skills.reload();
     out(QStringLiteral("skills: %1").arg(skills.skills().size()));
 
-    Engine *e = a.at(1) == QLatin1String("opencode") ? static_cast<Engine *>(new OpencodeEngine(&skills, &plugins))
-                                                     : static_cast<Engine *>(new NativeEngine(&skills, &plugins));
+    Engine *e = new NativeEngine(&skills, &plugins);
     QString session;
     QObject::connect(e, &Engine::statusMessage, [](const QString &s) { if (!s.isEmpty()) out("[status] " + s); });
     QObject::connect(e, &Engine::failed, [&](const QString &s) { out("[failed] " + s); app.exit(1); });

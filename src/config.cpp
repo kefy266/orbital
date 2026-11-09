@@ -106,6 +106,18 @@ QList<ProviderConfig> providers()
             continue;
         out << p;
     }
+    // Signed in with EdgeAccount: ORBITAL Cloud models through orbital.oedge.xyz, no API key needed.
+    const QString cloudToken = Paths::loadSettings().value(QStringLiteral("edgeAccount")).toObject()
+                                   .value(QStringLiteral("token")).toString();
+    if (!cloudToken.isEmpty() && !all.contains(QStringLiteral("orbital"))) {
+        ProviderConfig p;
+        p.id = QStringLiteral("orbital");
+        p.name = QStringLiteral("ORBITAL Cloud");
+        p.type = QStringLiteral("openai");
+        p.baseUrl = qEnvironmentVariable("ORBITAL_CLOUD_URL", QStringLiteral("https://orbital.oedge.xyz")) + QStringLiteral("/v1");
+        p.apiKey = cloudToken;
+        out.prepend(p);
+    }
     return out;
 }
 

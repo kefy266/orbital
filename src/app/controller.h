@@ -10,10 +10,11 @@
 #include <QVariantMap>
 
 #include "chatmodel.h"
+class EdgeAccount;
 class PluginManager;
 class SkillManager;
 
-// Everything the QML UI talks to. Owns both engines, the skill/plugin
+// Everything the QML UI talks to. Owns the engine, the EdgeAccount sign-in, the skill/plugin
 // managers and the chat/session models; exposed as the "App" singleton.
 class QNetworkAccessManager;
 
@@ -58,6 +59,11 @@ class AppController : public QObject
     Q_PROPERTY(QVariantList storeItems READ storeItems NOTIFY storeChanged)
     Q_PROPERTY(bool storeLoading READ storeLoading NOTIFY storeChanged)
     Q_PROPERTY(QString storeError READ storeError NOTIFY storeChanged)
+
+    Q_PROPERTY(bool accountSignedIn READ accountSignedIn NOTIFY accountChanged)
+    Q_PROPERTY(bool accountBusy READ accountBusy NOTIFY accountChanged)
+    Q_PROPERTY(QString accountEmail READ accountEmail NOTIFY accountChanged)
+    Q_PROPERTY(QString accountName READ accountName NOTIFY accountChanged)
 
     Q_PROPERTY(QString appVersion READ appVersion CONSTANT)
     Q_PROPERTY(bool updateAvailable READ updateAvailable NOTIFY updateChanged)
@@ -139,6 +145,7 @@ public:
     Q_INVOKABLE void lockModel(const QString &ref, const QString &reason = QString());
     Q_INVOKABLE void unlockModel(const QString &ref);
     Q_INVOKABLE void unlockAllModels();
+    void unlockProvider(const QString &prefix);
     Q_INVOKABLE bool isModelLocked(const QString &ref) const { return m_lockedModels.contains(ref); }
     // Opens web/e-mail links from the chat in the default browser.
     Q_INVOKABLE void openLink(const QString &url);
@@ -177,8 +184,6 @@ public:
     Q_INVOKABLE void setPermission(const QString &tool, const QString &policy);
     Q_INVOKABLE int maxSteps() const;
     Q_INVOKABLE void setMaxSteps(int steps);
-    Q_INVOKABLE QString opencodeVersion() const;
-    Q_INVOKABLE void setOpencodeVersion(const QString &version);
     Q_INVOKABLE QVariantMap paths() const;
     // Store: catalog of skills and plugins hosted in the Orbital repository.
     QVariantList storeItems() const;
@@ -188,6 +193,15 @@ public:
     Q_INVOKABLE void syncOfficialSkills();
     Q_INVOKABLE void installStoreItem(const QString &id);
     Q_INVOKABLE void removeStoreItem(const QString &id);
+
+    // EdgeAccount: optional sign-in that unlocks ORBITAL Cloud models (no API key, no limits).
+    bool accountSignedIn() const;
+    bool accountBusy() const;
+    QString accountEmail() const;
+    QString accountName() const;
+    Q_INVOKABLE void accountSignIn();
+    Q_INVOKABLE void accountSignOut();
+    Q_INVOKABLE void accountCancel();
 
     // Auto-update
     QString appVersion() const;
@@ -230,6 +244,7 @@ Q_SIGNALS:
     void storeItemDone(const QString &id, bool ok, const QString &message);
     void githubSkillDone(bool ok, const QString &message);
     void updateChanged();
+    void accountChanged();
     void updateProgressChanged();
     void scrollToEnd();
 
@@ -291,9 +306,15 @@ private:
     void loadPromptHistory();
     void savePromptHistory();
 
-    QSet<QString> m_lockedModels;
+    QHash<QString, qint64> m_lockedModels; // ref -> unlock time (ms since epoch)
+    QTimer m_lockTimer;
     void loadLockedModels();
     void saveLockedModels();
+    void syncLockFlags();
+    void expireLocks();
+    QString lockText(const QString &ref) const;
+    QString fallbackModel() const;
+    EdgeAccount *m_account = nullptr;
     bool handleSlashCommand(const QString &name, const QString &args);
 
     bool m_updateAvailable = false;

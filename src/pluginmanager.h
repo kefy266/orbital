@@ -16,12 +16,11 @@ struct PluginAction
 };
 
 // An Orbital plugin is a folder with a plugin.json manifest. It can contribute:
-//   commands      -> opencode slash commands (prompt templates)
+//   commands      -> slash commands (prompt templates)
 //   mcp           -> MCP servers (tools for the model)
 //   skills        -> a folder of skills bundled with the plugin
 //   instructions  -> markdown files appended to the system instructions
-//   tools         -> script tools (native engine): executable gets JSON args on stdin
-//   opencodePlugins -> opencode server plugins (JS/TS, opencode engine)
+//   tools         -> script tools: executable gets JSON args on stdin
 //   actions       -> Orbital toolbar buttons
 //   hooks.beforePrompt -> executable that can rewrite or block outgoing prompts
 struct Plugin
@@ -63,7 +62,6 @@ public:
     QJsonObject mcpServers() const;   // name -> {type, command[] | url, ...}
     QList<QPair<QString, QJsonObject>> scriptTools() const; // (plugin dir, tool def)
     QStringList instructionFiles() const;
-    QStringList opencodePlugins() const;
     QJsonObject permissions() const;
     // Id of the enabled plugin that allows every tool ("*": "allow"), if any.
     QString autoModePlugin() const;

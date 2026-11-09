@@ -1,8 +1,8 @@
 #include "controller.h"
 
 #include "../config.h"
+#include "../edgeaccount.h"
 #include "../nativeengine.h"
-#include "../opencodeengine.h"
 #include "../paths.h"
 #include "../platform.h"
 #include "../pluginmanager.h"
@@ -42,6 +42,13 @@ AppController::AppController(QObject *parent)
 {
     Config::ensureDefault();
     Paths::installBundledContent();
+    // Orbital no longer ships the opencode engine: drop what older versions downloaded.
+    for (const char *dir : {"/engine", "/opencode-home"})
+        QDir(Paths::dataDir() + QLatin1String(dir)).removeRecursively();
+    if (QJsonObject config = Config::raw(); config.contains(QStringLiteral("opencode"))) {
+        config.remove(QStringLiteral("opencode"));
+        Config::saveRaw(config, nullptr);
+    }
     reloadExtensions();
 
     const QJsonObject settings = Paths::loadSettings();
@@ -50,7 +57,26 @@ AppController::AppController(QObject *parent)
         m_directory = Paths::noFolderDir();
 
     m_engines.insert(QStringLiteral("native"), new NativeEngine(m_skills, m_plugins, this));
-    m_engines.insert(QStringLiteral("opencode"), new OpencodeEngine(m_skills, m_plugins, this));
+
+    m_account = new EdgeAccount(m_nam, this);
+    connect(m_account, &EdgeAccount::changed, this, &AppController::accountChanged);
+    connect(m_account, &EdgeAccount::finished, this, [this](bool ok, const QString &message) {
+        Q_EMIT toast(message);
+        if (ok) {
+            // Start on ORBITAL Cloud right after signing in.
+            QJsonObject s = Paths::loadSettings();
+            s.insert(QStringLiteral("model.native"), QStringLiteral("orbital/gpt-oss-120b"));
+            Paths::saveSettings(s);
+            Config::setDefaultModel(QStringLiteral("orbital/gpt-oss-120b"));
+            unlockProvider(QStringLiteral("orbital/"));
+            refreshModels();
+        }
+    });
+
+    // Limit locks expire on their own; check every half minute.
+    m_lockTimer.setInterval(30 * 1000);
+    connect(&m_lockTimer, &QTimer::timeout, this, &AppController::expireLocks);
+    m_lockTimer.start();
 
     m_sessionRefresh.setSingleShot(true);
     m_sessionRefresh.setInterval(300);
@@ -67,8 +93,8 @@ AppController::~AppController()
 
 void AppController::start()
 {
-    // One engine for everyone: free cloud models plus any provider the user connects.
-    switchEngine(QStringLiteral("opencode"));
+    // One engine for everyone: ORBITAL Cloud (EdgeAccount) plus any provider the user connects.
+    switchEngine(QStringLiteral("native"));
     QTimer::singleShot(4000, this, [this] { checkForUpdates(true); });
     QTimer::singleShot(6000, this, [this] { syncOfficialSkills(); });
 
@@ -435,7 +461,7 @@ static QString prettyModelName(QString name, bool *free)
 static QString prettyProviderName(const QString &id, const QString &name)
 {
     static const QHash<QString, QString> headings{
-        {QStringLiteral("opencode"), QStringLiteral("ORBITAL Cloud")},
+        {QStringLiteral("orbital"), QStringLiteral("ORBITAL Cloud")},
         {QStringLiteral("gemini"), QStringLiteral("Google Modelleri")},
         {QStringLiteral("google"), QStringLiteral("Google Modelleri")},
         {QStringLiteral("openai"), QStringLiteral("OpenAI Modelleri")},
@@ -463,59 +489,30 @@ void AppController::refreshModels()
                                     {QStringLiteral("provider"), prettyProviderName(m.provider, m.providerName)},
                                     {QStringLiteral("model"), m.model},
                                     {QStringLiteral("name"), pretty},
-                                    {QStringLiteral("free"), free || m.provider == QLatin1String("opencode")},
-                                    {QStringLiteral("locked"), m_lockedModels.contains(m.ref())}};
+                                    {QStringLiteral("free"), free || m.provider == QLatin1String("orbital")},
+                                    {QStringLiteral("locked"), m_lockedModels.contains(m.ref())},
+                                    {QStringLiteral("lockText"), lockText(m.ref())}};
         }
         QString wanted = Paths::loadSettings().value(QStringLiteral("model.") + engine->id()).toString();
         if (wanted.isEmpty() && engine->id() == QLatin1String("native"))
             wanted = Config::defaultModel();
-        // Fall back to a free cloud model that works without an API key.
-        static const QString kFreeDefault = QStringLiteral("opencode/deepseek-v4.1-flash-free");
         bool found = false;
-        bool haveFree = false;
-        for (const ModelChoice &m : models) {
+        for (const ModelChoice &m : models)
             found = found || m.ref() == wanted;
-            haveFree = haveFree || m.ref() == kFreeDefault;
-        }
-        m_modelRef = found ? wanted : haveFree ? kFreeDefault : (models.isEmpty() ? QString() : models.first().ref());
-        if (m_lockedModels.contains(m_modelRef)) {
-            static const QStringList kPreferredFallbacks{
-                QStringLiteral("gemini/gemini-3.5-flash"),
-                QStringLiteral("gemini/gemini-3.5-flash-lite"),
-                QStringLiteral("gemini/gemini-3-flash-preview"),
-                QStringLiteral("gemini/gemini-3.1-flash-lite"),
-                QStringLiteral("opencode/deepseek-v4.1-flash-free"),
-            };
-            QString unlocked;
-            for (const QString &pref : kPreferredFallbacks) {
-                if (m_lockedModels.contains(pref))
-                    continue;
-                for (const ModelChoice &m : models) {
-                    if (m.ref() == pref) {
-                        unlocked = pref;
-                        break;
-                    }
-                }
-                if (!unlocked.isEmpty())
-                    break;
-            }
-            if (unlocked.isEmpty()) {
-                for (const ModelChoice &m : models) {
-                    if (!m_lockedModels.contains(m.ref())) {
-                        unlocked = m.ref();
-                        break;
-                    }
-                }
-            }
-            if (!unlocked.isEmpty())
-                m_modelRef = unlocked;
+        m_modelRef = found ? wanted : QString();
+        if (m_modelRef.isEmpty() || m_lockedModels.contains(m_modelRef)) {
+            const QString fallback = fallbackModel();
+            if (!fallback.isEmpty())
+                m_modelRef = fallback;
+            else if (m_modelRef.isEmpty() && !models.isEmpty())
+                m_modelRef = models.first().ref();
         }
         Q_EMIT modelsChanged();
         Q_EMIT modelChanged();
         if (models.isEmpty())
-            Q_EMIT toast(engine->id() == QLatin1String("native")
-                             ? QStringLiteral("Bu motorda model yok: Ayarlar → Sağlayıcılar'dan API anahtarı ekle ya da Orbital Cloud'a geç")
-                             : QStringLiteral("Hiç model bulunamadı. İnternet bağlantını kontrol et."));
+            Q_EMIT toast(m_account->signedIn()
+                             ? QStringLiteral("Hiç model bulunamadı. İnternet bağlantını kontrol et.")
+                             : QStringLiteral("Model yok: EdgeAccount ile giriş yap ya da Ayarlar → Sağlayıcılar'dan API anahtarı ekle."));
     });
 }
 
@@ -1112,26 +1109,128 @@ void AppController::toggleAutoMode()
     }
 }
 
+// How long a limit error locks a model: the provider's own hint when it gives one
+// ("retry after 30 seconds", "try again in 1m20.5s", retryDelay "45s"), otherwise a guess by kind.
+static qint64 lockDurationMs(const QString &message)
+{
+    const QString l = message.toLower();
+    qint64 ms = 0;
+    static const QRegularExpression after(QStringLiteral("retry[ _-]?after\\D{0,4}(\\d+(?:\\.\\d+)?)"));
+    static const QRegularExpression tryIn(QStringLiteral("(?:try again in|retry ?delay\\W*)\\s*((?:\\d+(?:\\.\\d+)?\\s*(?:ms|h|m|s)\\s*)+)"));
+    static const QRegularExpression part(QStringLiteral("(\\d+(?:\\.\\d+)?)\\s*(ms|h|m|s)"));
+    if (const auto m = after.match(l); m.hasMatch()) {
+        ms = qint64(m.captured(1).toDouble() * 1000);
+    } else if (const auto m = tryIn.match(l); m.hasMatch()) {
+        for (auto it = part.globalMatch(m.captured(1)); it.hasNext();) {
+            const auto p = it.next();
+            const double v = p.captured(1).toDouble();
+            const QString unit = p.captured(2);
+            ms += qint64(unit == QLatin1String("h") ? v * 3600000 : unit == QLatin1String("m") ? v * 60000
+                         : unit == QLatin1String("s") ? v * 1000 : v);
+        }
+    }
+    if (ms > 0)
+        return qBound(qint64(30 * 1000), ms + 1000, qint64(24 * 3600 * 1000));
+    if (l.contains(QStringLiteral("credit balance")) || l.contains(QStringLiteral("billing"))
+        || l.contains(QStringLiteral("insufficient_quota")) || l.contains(QStringLiteral("exceeded your current quota"))
+        || l.contains(QStringLiteral("no longer available")))
+        return 6 * 3600 * 1000;
+    if (l.contains(QStringLiteral("quota")) || l.contains(QStringLiteral("usage limit")) || l.contains(QStringLiteral("free usage"))
+        || l.contains(QStringLiteral("limit reached")) || l.contains(QStringLiteral("resourceexhausted")))
+        return 3600 * 1000;
+    return 5 * 60 * 1000; // rate limits and overload clear up quickly
+}
+
+QString AppController::lockText(const QString &ref) const
+{
+    const qint64 until = m_lockedModels.value(ref);
+    if (!until)
+        return {};
+    const QDateTime at = QDateTime::fromMSecsSinceEpoch(until);
+    return at.date() == QDate::currentDate() ? at.toString(QStringLiteral("HH:mm"))
+                                             : at.toString(QStringLiteral("d.MM HH:mm"));
+}
+
 void AppController::loadLockedModels()
 {
     m_lockedModels.clear();
-    const QJsonObject s = Paths::loadSettings();
-    const QJsonArray arr = s.value(QStringLiteral("lockedModels")).toArray();
-    for (const QJsonValue &v : arr) {
-        const QString ref = v.toString();
-        if (!ref.isEmpty())
-            m_lockedModels.insert(ref);
+    // {ref: unlock time in ms}; the old list format (locks that never expired) is dropped.
+    const QJsonObject locks = Paths::loadSettings().value(QStringLiteral("lockedModels")).toObject();
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    for (auto it = locks.begin(); it != locks.end(); ++it) {
+        const qint64 until = qint64(it.value().toDouble());
+        if (until > now)
+            m_lockedModels.insert(it.key(), until);
     }
 }
 
 void AppController::saveLockedModels()
 {
     QJsonObject s = Paths::loadSettings();
-    QJsonArray arr;
-    for (const QString &ref : std::as_const(m_lockedModels))
-        arr.append(ref);
-    s.insert(QStringLiteral("lockedModels"), arr);
+    QJsonObject locks;
+    for (auto it = m_lockedModels.cbegin(); it != m_lockedModels.cend(); ++it)
+        locks.insert(it.key(), double(it.value()));
+    s.insert(QStringLiteral("lockedModels"), locks);
     Paths::saveSettings(s);
+}
+
+void AppController::syncLockFlags()
+{
+    for (int i = 0; i < m_models.size(); ++i) {
+        QVariantMap m = m_models.at(i).toMap();
+        const QString r = m.value(QStringLiteral("ref")).toString();
+        m.insert(QStringLiteral("locked"), m_lockedModels.contains(r));
+        m.insert(QStringLiteral("lockText"), lockText(r));
+        m_models[i] = m;
+    }
+    saveLockedModels();
+    Q_EMIT modelsChanged();
+    Q_EMIT modelChanged();
+}
+
+void AppController::expireLocks()
+{
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    QStringList freed;
+    for (auto it = m_lockedModels.begin(); it != m_lockedModels.end();) {
+        if (it.value() <= now) {
+            freed << it.key();
+            it = m_lockedModels.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    if (freed.isEmpty())
+        return;
+    syncLockFlags();
+    Q_EMIT toast(freed.size() == 1
+                     ? QStringLiteral("🔓 %1 modelinin limiti sıfırlandı, tekrar kullanılabilir.")
+                           .arg(prettyModelName(freed.first().section(QLatin1Char('/'), 1), nullptr))
+                     : QStringLiteral("🔓 %1 modelin limiti sıfırlandı.").arg(freed.size()));
+}
+
+// First usable model after a lock: ORBITAL Cloud, then cheap fast models, then anything unlocked.
+QString AppController::fallbackModel() const
+{
+    static const QStringList kPreferred{
+        QStringLiteral("orbital/gpt-oss-120b"),
+        QStringLiteral("orbital/qwen3.8-27b"),
+        QStringLiteral("orbital/gpt-oss-20b"),
+        QStringLiteral("gemini/gemini-3.5-flash"),
+        QStringLiteral("gemini/gemini-3.5-flash-lite"),
+        QStringLiteral("gemini/gemini-3-flash-preview"),
+        QStringLiteral("gemini/gemini-3.1-flash-lite"),
+    };
+    QStringList available;
+    for (const QVariant &v : m_models)
+        available << v.toMap().value(QStringLiteral("ref")).toString();
+    for (const QString &pref : kPreferred)
+        if (available.contains(pref) && !m_lockedModels.contains(pref))
+            return pref;
+    for (const QString &r : std::as_const(available))
+        if (!r.isEmpty() && !m_lockedModels.contains(r))
+            return r;
+    return {};
 }
 
 void AppController::lockModel(const QString &ref, const QString &reason)
@@ -1140,102 +1239,65 @@ void AppController::lockModel(const QString &ref, const QString &reason)
         return;
     const QString low = reason.toLower();
     const QString providerPrefix = ref.section(QLatin1Char('/'), 0, 0) + QLatin1Char('/');
-    const bool lockAllProvider = (providerPrefix == QLatin1String("opencode/")
-                                  && (low.contains(QStringLiteral("free usage exceeded"))
-                                      || low.contains(QStringLiteral("free limit reached"))
-                                      || low.contains(QStringLiteral("free usage limit reached"))))
+    // Account-wide limits lock every model of that provider.
+    const bool lockAllProvider = (providerPrefix == QLatin1String("orbital/") && low.contains(QStringLiteral("günlük")))
                               || (providerPrefix == QLatin1String("anthropic/")
                                   && low.contains(QStringLiteral("credit balance is too low")));
+    const qint64 until = QDateTime::currentMSecsSinceEpoch() + lockDurationMs(reason);
 
-    m_lockedModels.insert(ref);
-    for (int i = 0; i < m_models.size(); ++i) {
-        QVariantMap m = m_models.at(i).toMap();
-        const QString r = m.value(QStringLiteral("ref")).toString();
-        if (r == ref || (lockAllProvider && r.startsWith(providerPrefix))) {
-            m_lockedModels.insert(r);
-            m.insert(QStringLiteral("locked"), true);
-            m_models[i] = m;
+    m_lockedModels.insert(ref, until);
+    if (lockAllProvider) {
+        for (const QVariant &v : std::as_const(m_models)) {
+            const QString r = v.toMap().value(QStringLiteral("ref")).toString();
+            if (r.startsWith(providerPrefix))
+                m_lockedModels.insert(r, until);
         }
     }
-    saveLockedModels();
-    Q_EMIT modelsChanged();
+    syncLockFlags();
 
     const QString name = prettyModelName(ref.section(QLatin1Char('/'), 1), nullptr);
+    const QString shown = name.isEmpty() ? ref : name;
     if (m_lockedModels.contains(m_modelRef)) {
-        static const QStringList kPreferredFallbacks{
-            QStringLiteral("gemini/gemini-3.5-flash"),
-            QStringLiteral("gemini/gemini-3.5-flash-lite"),
-            QStringLiteral("gemini/gemini-3-flash-preview"),
-            QStringLiteral("gemini/gemini-3.1-flash-lite"),
-            QStringLiteral("opencode/deepseek-v4.1-flash-free"),
-        };
-        QString fallback;
-        QString fallbackName;
-        for (const QString &pref : kPreferredFallbacks) {
-            if (m_lockedModels.contains(pref))
-                continue;
-            for (const QVariant &v : std::as_const(m_models)) {
-                const QVariantMap m = v.toMap();
-                if (m.value(QStringLiteral("ref")).toString() == pref) {
-                    fallback = pref;
-                    fallbackName = m.value(QStringLiteral("name")).toString();
-                    break;
-                }
-            }
-            if (!fallback.isEmpty())
-                break;
-        }
-        if (fallback.isEmpty()) {
-            for (const QVariant &v : std::as_const(m_models)) {
-                const QVariantMap m = v.toMap();
-                const QString r = m.value(QStringLiteral("ref")).toString();
-                if (!r.isEmpty() && !m_lockedModels.contains(r)) {
-                    fallback = r;
-                    fallbackName = m.value(QStringLiteral("name")).toString();
-                    break;
-                }
-            }
-        }
+        const QString fallback = fallbackModel();
         if (!fallback.isEmpty() && fallback != m_modelRef) {
+            QString fallbackName;
+            for (const QVariant &v : std::as_const(m_models))
+                if (v.toMap().value(QStringLiteral("ref")).toString() == fallback)
+                    fallbackName = v.toMap().value(QStringLiteral("name")).toString();
             setModel(fallback);
-            Q_EMIT toast(QStringLiteral("Model kotası doldu (🔒): %1 → Otomatik olarak %2 modeline geçildi.")
-                             .arg(name.isEmpty() ? ref : name, fallbackName.isEmpty() ? fallback : fallbackName));
+            Q_EMIT toast(QStringLiteral("Model limiti doldu (🔒 %1'e kadar): %2 → %3 modeline geçildi.")
+                             .arg(lockText(ref), shown, fallbackName.isEmpty() ? fallback : fallbackName));
             return;
         }
-        Q_EMIT modelChanged();
     }
-    Q_EMIT toast(QStringLiteral("Model kotası/limiti doldu (🔒): %1. Farklı bir modele geçebilirsiniz.").arg(name.isEmpty() ? ref : name));
+    Q_EMIT toast(QStringLiteral("Model limiti doldu (🔒): %1, %2'de kendiliğinden açılır.").arg(shown, lockText(ref)));
 }
 
 void AppController::unlockModel(const QString &ref)
 {
-    if (m_lockedModels.remove(ref)) {
-        saveLockedModels();
-        for (int i = 0; i < m_models.size(); ++i) {
-            QVariantMap m = m_models.at(i).toMap();
-            if (m.value(QStringLiteral("ref")).toString() == ref) {
-                m.insert(QStringLiteral("locked"), false);
-                m_models[i] = m;
-                break;
-            }
+    if (m_lockedModels.remove(ref))
+        syncLockFlags();
+}
+
+void AppController::unlockProvider(const QString &prefix)
+{
+    bool changed = false;
+    for (auto it = m_lockedModels.begin(); it != m_lockedModels.end();) {
+        if (it.key().startsWith(prefix)) {
+            it = m_lockedModels.erase(it);
+            changed = true;
+        } else {
+            ++it;
         }
-        Q_EMIT modelsChanged();
-        if (ref == m_modelRef)
-            Q_EMIT modelChanged();
     }
+    if (changed)
+        syncLockFlags();
 }
 
 void AppController::unlockAllModels()
 {
     m_lockedModels.clear();
-    saveLockedModels();
-    for (int i = 0; i < m_models.size(); ++i) {
-        QVariantMap m = m_models.at(i).toMap();
-        m.insert(QStringLiteral("locked"), false);
-        m_models[i] = m;
-    }
-    Q_EMIT modelsChanged();
-    Q_EMIT modelChanged();
+    syncLockFlags();
 }
 
 bool AppController::handleSlashCommand(const QString &name, const QString &args)
@@ -1367,7 +1429,7 @@ bool AppController::handleSlashCommand(const QString &name, const QString &args)
             Q_EMIT toast(QStringLiteral("Tüm model kilitleri açıldı"));
         } else {
             QString matchedRef;
-            for (const QString &r : std::as_const(m_lockedModels)) {
+            for (const QString &r : m_lockedModels.keys()) {
                 if (r.contains(args, Qt::CaseInsensitive)) {
                     matchedRef = r;
                     break;
@@ -1392,13 +1454,13 @@ bool AppController::handleSlashCommand(const QString &name, const QString &args)
             lockedStr = QStringLiteral("*Kilitli model yok*");
         } else {
             QStringList l;
-            for (const QString &r : std::as_const(m_lockedModels))
-                l << QStringLiteral("`%1` 🔒").arg(r);
+            for (auto it = m_lockedModels.cbegin(); it != m_lockedModels.cend(); ++it)
+                l << QStringLiteral("`%1` 🔒 (%2'de açılır)").arg(it.key(), lockText(it.key()));
             lockedStr = l.join(QStringLiteral(", "));
         }
         QString statusText = QStringLiteral(
             "### 📊 Orbital Sistem Durumu\n\n"
-            "- **Sürüm:** `v0.4.0`\n"
+            "- **Sürüm:** `v%14`\n"
             "- **Çalışma Alanı:** `%1` (%2)\n"
             "- **Aktif Motor:** `%3` (%4)\n"
             "- **Aktif Model:** **%5** (`%6`) %7\n"
@@ -1408,7 +1470,7 @@ bool AppController::handleSlashCommand(const QString &name, const QString &args)
             "- **Bağlı Skiller:** %12\n"
             "- **Token Kullanımı:** %13\n"
         ).arg(projectName(), projectPath(),
-              engineId() == QLatin1String("native") ? QStringLiteral("Yerel (Native Engine)") : QStringLiteral("Orbital Cloud (OpenCode)"),
+              m_account->signedIn() ? QStringLiteral("Orbital Core + ORBITAL Cloud") : QStringLiteral("Orbital Core"),
               engineReady() ? QStringLiteral("Hazır") : QStringLiteral("Başlatılıyor"),
               modelLabel(), modelRef(), isCurrentModelLocked() ? QStringLiteral("🔒 **[Limit/Kota Doldu]**") : QStringLiteral("✅ Normal"),
               m_agent == QLatin1String("build") ? QStringLiteral("Build") : QStringLiteral("Plan"),
@@ -1416,7 +1478,8 @@ bool AppController::handleSlashCommand(const QString &name, const QString &args)
               autoMode() ? QStringLiteral("⚡ **Açık** (İzin istemez)") : QStringLiteral("Kapalı (Güvenli mod)"),
               lockedStr,
               m_attached.isEmpty() ? QStringLiteral("*Yok*") : m_attached.join(QStringLiteral(", ")),
-              m_usage.isEmpty() ? QStringLiteral("0 token") : m_usage);
+              m_usage.isEmpty() ? QStringLiteral("0 token") : m_usage)
+            .arg(appVersion());
 
         m_chat->setText(QStringLiteral("cmd_") + QString::number(QDateTime::currentMSecsSinceEpoch()), statusText);
         Q_EMIT scrollToEnd();
@@ -2096,29 +2159,12 @@ void AppController::setMaxSteps(int steps)
     Config::saveRaw(config, nullptr);
 }
 
-QString AppController::opencodeVersion() const
-{
-    return OpencodeEngine::version();
-}
-
-void AppController::setOpencodeVersion(const QString &version)
-{
-    QJsonObject config = Config::raw();
-    QJsonObject oc = config.value(QStringLiteral("opencode")).toObject();
-    oc.insert(QStringLiteral("version"), version.trimmed());
-    config.insert(QStringLiteral("opencode"), oc);
-    Config::saveRaw(config, nullptr);
-    m_settingsDirty = true;
-}
-
 QVariantMap AppController::paths() const
 {
     return {{QStringLiteral("config"), Config::file()},
             {QStringLiteral("skills"), Paths::skillsDir()},
             {QStringLiteral("plugins"), Paths::pluginsDir()},
-            {QStringLiteral("data"), Paths::dataDir()},
-            {QStringLiteral("engine"), Paths::dataDir() + QStringLiteral("/engine")},
-            {QStringLiteral("opencodeHome"), OpencodeEngine::homeDir()}};
+            {QStringLiteral("data"), Paths::dataDir()}};
 }
 
 // ---------------------------------------------------------------- store
@@ -2364,10 +2410,51 @@ void AppController::applySettings()
     Q_EMIT toast(QStringLiteral("Ayarlar uygulandı"));
 }
 
+// ---------------------------------------------------------------- EdgeAccount
+
+bool AppController::accountSignedIn() const
+{
+    return m_account->signedIn();
+}
+
+bool AppController::accountBusy() const
+{
+    return m_account->busy();
+}
+
+QString AppController::accountEmail() const
+{
+    return m_account->email();
+}
+
+QString AppController::accountName() const
+{
+    return m_account->name();
+}
+
+void AppController::accountSignIn()
+{
+    m_account->signIn();
+}
+
+void AppController::accountCancel()
+{
+    m_account->cancel();
+}
+
+void AppController::accountSignOut()
+{
+    m_account->signOut();
+    if (m_modelRef.startsWith(QLatin1String("orbital/")))
+        m_modelRef.clear();
+    refreshModels();
+    Q_EMIT toast(QStringLiteral("EdgeAccount oturumu kapatıldı."));
+}
+
 QString AppController::appVersion() const
 {
     const QString ver = QCoreApplication::applicationVersion();
-    return ver.isEmpty() ? QStringLiteral("0.4.1") : ver;
+    return ver.isEmpty() ? QStringLiteral("0.5.0") : ver;
 }
 
 void AppController::checkForUpdates(bool silent)
@@ -2468,46 +2555,25 @@ void AppController::checkForUpdates(bool silent)
         return true;
     };
 
-    // First attempt: GitHub REST API
-    QNetworkRequest req(QUrl(QStringLiteral("https://api.github.com/repos/kefy266/orbital/releases/latest")));
-    req.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("Orbital-App"));
-    req.setRawHeader("Accept", "application/vnd.github.v3+json");
-
+    // Release info lives on Orbital's own server (same shape as version.json in the repo).
+    QNetworkRequest req(QUrl(EdgeAccount::cloudUrl() + QStringLiteral("/guncelleme")));
+    req.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("Orbital/%1").arg(appVersion()));
+    req.setRawHeader("Accept", "application/json");
+    req.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
+    req.setTransferTimeout(15000);
     QNetworkReply *reply = m_nam->get(req);
     connect(reply, &QNetworkReply::finished, this, [this, reply, silent, processPayload]() {
         reply->deleteLater();
-
-        bool ok = false;
+        m_checkingUpdate = false;
         if (reply->error() == QNetworkReply::NoError) {
             const QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
-            if (doc.isObject())
-                ok = processPayload(doc.object());
+            if (doc.isObject() && processPayload(doc.object()))
+                return;
         }
-
-        if (ok) {
-            m_checkingUpdate = false;
-            return;
-        }
-
-        // Fallback attempt: raw.githubusercontent.com/version.json (never rate-limited)
-        QNetworkRequest fallbackReq(QUrl(QStringLiteral("https://raw.githubusercontent.com/kefy266/orbital/main/version.json")));
-        fallbackReq.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("Orbital-App"));
-        QNetworkReply *fallbackReply = m_nam->get(fallbackReq);
-        connect(fallbackReply, &QNetworkReply::finished, this, [this, fallbackReply, silent, processPayload]() {
-            fallbackReply->deleteLater();
-            m_checkingUpdate = false;
-
-            if (fallbackReply->error() == QNetworkReply::NoError) {
-                const QJsonDocument doc = QJsonDocument::fromJson(fallbackReply->readAll());
-                if (doc.isObject() && processPayload(doc.object()))
-                    return;
-            }
-
-            m_updateStatus = QStringLiteral("Güncelleme denetlenemedi.");
-            Q_EMIT updateChanged();
-            if (!silent)
-                Q_EMIT toast(QStringLiteral("Güncelleme sunucusuna ulaşılamadı."));
-        });
+        m_updateStatus = QStringLiteral("Güncelleme denetlenemedi.");
+        Q_EMIT updateChanged();
+        if (!silent)
+            Q_EMIT toast(QStringLiteral("Güncelleme sunucusuna ulaşılamadı."));
     });
 }
 

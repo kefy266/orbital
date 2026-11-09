@@ -57,6 +57,43 @@ AbstractButton {
             id: layout
             spacing: 10
 
+            // ORBITAL Cloud needs no API key: offer EdgeAccount sign-in right where models are picked.
+            AbstractButton {
+                id: signIn
+                visible: !App.accountSignedIn
+                Layout.fillWidth: true
+                implicitHeight: 54
+                hoverEnabled: true
+                enabled: !App.accountBusy
+                onClicked: App.accountSignIn()
+                background: Rectangle {
+                    radius: Theme.radiusSm + 2
+                    color: signIn.hovered ? Theme.hover : Theme.surface
+                    border.width: 1
+                    border.color: Theme.border
+                }
+                contentItem: ColumnLayout {
+                    spacing: 2
+                    Text {
+                        Layout.leftMargin: 12
+                        text: App.accountBusy ? "Tarayıcıda girişi tamamla…" : "EdgeAccount ile giriş yap"
+                        font.family: Theme.font
+                        font.pixelSize: Theme.fontUi
+                        font.weight: Font.Medium
+                        color: Theme.text
+                    }
+                    Text {
+                        Layout.leftMargin: 12
+                        Layout.rightMargin: 12
+                        Layout.fillWidth: true
+                        elide: Text.ElideRight
+                        text: "ORBITAL Cloud modelleri: API anahtarı yok, sınır yok"
+                        font.family: Theme.font
+                        font.pixelSize: Theme.fontCaption
+                        color: Theme.textFaint
+                    }
+                }
+            }
             OTextField {
                 id: search
                 Layout.fillWidth: true
@@ -99,7 +136,7 @@ AbstractButton {
                         App.setModel(modelData.ref)
                         popup.close()
                         if (locked)
-                            App.toast("Bu modelin kotası dolmuştu (🔒). Kilidi kaldırmak için /kilit-ac yazabilirsiniz.")
+                            App.toast("Bu modelin limiti doldu (🔒), " + modelData.lockText + "'de kendiliğinden açılır. Hemen açmak için /kilit-ac yazabilirsiniz.")
                     }
                     background: Rectangle { radius: Theme.radiusSm; color: item.hovered ? Theme.hover : "transparent" }
                     contentItem: RowLayout {
@@ -126,7 +163,7 @@ AbstractButton {
                                 spacing: 3
                                 Icon { name: "lock"; size: 11; color: Theme.danger; anchors.verticalCenter: parent.verticalCenter }
                                 Text {
-                                    text: "Limit Doldu"
+                                    text: item.modelData.lockText ? "Limit · " + item.modelData.lockText : "Limit Doldu"
                                     font.family: Theme.font
                                     font.pixelSize: Theme.fontSmall - 1
                                     font.weight: Font.Medium

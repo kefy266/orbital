@@ -146,7 +146,7 @@ Popup {
                     }
                 }
                 Item { Layout.fillHeight: true }
-                Text { text: "Orbital 0.3"; Layout.leftMargin: 10; font.family: Theme.font; font.pixelSize: Theme.fontCaption; color: Theme.textFaint }
+                Text { text: "Orbital " + App.appVersion; Layout.leftMargin: 10; font.family: Theme.font; font.pixelSize: Theme.fontCaption; color: Theme.textFaint }
             }
         }
 
@@ -210,6 +210,27 @@ Popup {
                         Layout.fillWidth: true
                         spacing: 10
                         PageTitle { title: "Genel" }
+                        SectionLabel { text: "HESAP" }
+                        Card {
+                            SettingRow {
+                                title: App.accountSignedIn ? (App.accountName.length > 0 ? App.accountName : App.accountEmail)
+                                                           : "EdgeAccount ile giriş yap"
+                                subtitle: App.accountSignedIn
+                                          ? App.accountEmail + " · ORBITAL Cloud modelleri API anahtarı olmadan, sınırsız kullanılabilir."
+                                          : App.accountBusy ? "Tarayıcıda girişi tamamla…"
+                                                            : "İsteğe bağlı. Giriş yapınca ORBITAL Cloud modelleri API anahtarı olmadan, sınırsız kullanılabilir."
+                                divider: false
+                                OButton {
+                                    visible: !App.accountSignedIn && !App.accountBusy
+                                    variant: "primary"
+                                    text: "Giriş yap"
+                                    iconName: "external"
+                                    onClicked: App.accountSignIn()
+                                }
+                                OButton { visible: App.accountBusy; text: "Vazgeç"; onClicked: App.accountCancel() }
+                                OButton { visible: App.accountSignedIn; text: "Çıkış yap"; onClicked: App.accountSignOut() }
+                            }
+                        }
                         SectionLabel { text: "GÖRÜNÜM" }
                         Card {
                             SettingRow {
@@ -233,15 +254,14 @@ Popup {
                             Repeater {
                                 model: [
                                     { key: "config", label: "Yapılandırma dosyası" },
-                                    { key: "data", label: "Orbital veri klasörü" },
-                                    { key: "engine", label: "Orbital Cloud kurulum klasörü" }
+                                    { key: "data", label: "Orbital veri klasörü" }
                                 ]
                                 delegate: SettingRow {
                                     required property var modelData
                                     required property int index
                                     title: modelData.label
                                     subtitle: App.paths()[modelData.key]
-                                    divider: index < 2
+                                    divider: index < 1
                                     IconButton { iconName: "external"; tip: "Aç"; onClicked: App.openPath(App.paths()[modelData.key]) }
                                 }
                             }

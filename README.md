@@ -2,18 +2,19 @@
 
 [![Build](https://github.com/kefy266/orbital/actions/workflows/build.yml/badge.svg)](https://github.com/kefy266/orbital/actions/workflows/build.yml) · **Site:** https://kefy266.github.io/orbital
 
-**Skill ve eklenti destekli, sade bir masaüstü AI kod asistanı.** Qt Quick (QML) ile yazıldı, sistemin açık/koyu temasını izler. Kurulumdan hemen sonra API anahtarı gerektirmeyen ücretsiz bulut modelleriyle çalışır; istersen kendi OpenAI, Anthropic, Gemini… anahtarlarını bağlayabilirsin.
+**Skill ve eklenti destekli, sade bir masaüstü AI kod asistanı.** Qt Quick (QML) ile yazıldı, sistemin açık/koyu temasını izler. İsteğe bağlı EdgeAccount girişiyle API anahtarı gerektirmeyen ORBITAL Cloud modelleriyle çalışır; istersen kendi OpenAI, Anthropic, Gemini… anahtarlarını bağlayabilirsin.
 
 ## Özellikler
 
-- **Hazır bulut modelleri (ORBITAL Cloud):** DeepSeek, GLM, MiMo, Nemotron, MiniMax gibi ücretsiz modeller, anahtarsız.
+- **ORBITAL Cloud (EdgeAccount):** Ayarlar → Genel → *EdgeAccount ile giriş yap*. GPT-OSS 120B/20B ve Qwen 3.8 modelleri API anahtarı olmadan, sınırsız; istekler orbital.oedge.xyz üzerinden geçer.
+- **Süreli model kilitleri:** Kota/limit hatası alan model 🔒 ile kilitlenir ve sağlayıcının bildirdiği süre (yoksa 5 dk–6 sa) dolunca kendiliğinden açılır; `/kilit-ac` ile hemen açılabilir.
 - **Kendi sağlayıcıların:** Ayarlar → Sağlayıcılar'dan OpenAI, Anthropic, Google Gemini, OpenRouter, DeepSeek, Groq, Mistral, xAI ya da herhangi bir OpenAI uyumlu adres. Anahtar bağlanmadan önce test edilir.
 - **Gerçek bir kod ajanı:** dosya okur, yazar, düzenler, komut çalıştırır, arama yapar. Riskli adımlardan önce izin ister; araç başına izin ayarlanabilir.
 - **Skill'ler:** modelin belirli işleri nasıl yapacağını anlatan `SKILL.md` paketleri. Model gerektiğinde kendisi yükler, ya da `/skill-adı` ve `+` menüsüyle mesaja iliştirirsin.
 - **Eklentiler:** tek bir `plugin.json` ile slash komutları, MCP araç sunucuları, betik araçları, paketlenmiş skill'ler, sistem talimatları, eylemler ve prompt hook'ları.
 - **Mağaza:** skill ve eklentileri uygulamanın içinden tek tıkla yükle/kaldır. Katalog bu depodaki `store/` klasöründedir.
 - **Arayüz:** gruplu sohbet geçmişi, akan markdown, KDE renklendirmeli kod blokları, açılır araç kartları, Build/Plan modları.
-- **Otomatik güncelleme:** Linux (AppImage), Windows ve macOS'ta yeni sürümler uygulama içinden (Ayarlar → Genel) tek tıkla denetlenir ve güncellenir.
+- **Otomatik güncelleme:** Linux (AppImage), Windows ve macOS'ta yeni sürümler uygulama içinden (Ayarlar → Genel) tek tıkla denetlenir ve güncellenir. Sürüm bilgisi ve paketler `https://orbital.oedge.xyz/guncelleme` adresinden gelir.
 
 ## Kurulum
 
@@ -88,8 +89,8 @@ Her commit'te [GitHub Actions](https://github.com/kefy266/orbital/actions) üç 
 ```
 src/
   engine.h            ortak motor arayüzü
-  nativeengine.*      Orbital Core: model API'lerine doğrudan bağlanan ajan döngüsü
-  opencodeengine.*    ORBITAL Cloud: opencode altyapısının yalıtılmış, Orbital'e ait kopyası
+  nativeengine.*      Orbital Core: model API'lerine doğrudan bağlanan ajan döngüsü (araçlar, skill, eklenti, MCP)
+  edgeaccount.*       EdgeAccount girişi (OIDC + PKCE, 127.0.0.1 dönüşü) ve ORBITAL Cloud oturumu
   llm.*               OpenAI uyumlu ve Anthropic akışlı istemci
   tools.* mcpclient.* dosya/kabuk/arama araçları, MCP istemcisi
   skillmanager.* pluginmanager.*
@@ -98,12 +99,7 @@ resources/qml/        arayüz (Main, Sidebar, ChatView, Composer, SettingsDialog
 resources/skills|plugins/  ilk açılışta kurulan örnekler
 ```
 
-ORBITAL Cloud motoru, [opencode](https://github.com/anomalyco/opencode) sunucusunu Orbital'in kendi klasörüne (`~/.local/share/orbital/engine`) kurar ve ayrı ayarlarla çalıştırır. Bilgisayarındaki opencode kurulumuna dokunmaz.
-
-> [!NOTE]
-> **Bağımsızlık notu:** Orbital, OpenCode ekibi tarafından geliştirilmemiştir ve OpenCode ile hiçbir şekilde bağlantılı değildir. Orbital, açık kaynak opencode projesini altyapı olarak kullanan bağımsız bir projedir.
->
-> *Orbital is not built by the OpenCode team and is not affiliated with OpenCode in any way. It is an independent project that uses the open-source opencode project as part of its infrastructure.*
+ORBITAL Cloud, EdgeAccount ile giriş yapan kullanıcıların isteklerini `orbital.oedge.xyz` üzerinden model sağlayıcısına iletir; sağlayıcı anahtarları yalnızca sunucuda durur, kullanıcı başına adil kullanım kotası orada uygulanır.
 
 ## Dosyalar
 
