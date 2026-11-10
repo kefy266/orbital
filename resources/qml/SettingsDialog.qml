@@ -216,9 +216,9 @@ Popup {
                                 title: App.accountSignedIn ? (App.accountName.length > 0 ? App.accountName : App.accountEmail)
                                                            : "EdgeAccount ile giriş yap"
                                 subtitle: App.accountSignedIn
-                                          ? App.accountEmail + " · ORBITAL Cloud modelleri API anahtarı olmadan, sınırsız kullanılabilir."
+                                          ? App.accountEmail + " · ORBITAL Cloud modelleri API anahtarı olmadan, ücretsiz kullanılabilir (günlük adil kullanım sınırı var)."
                                           : App.accountBusy ? "Tarayıcıda girişi tamamla…"
-                                                            : "İsteğe bağlı. Giriş yapınca ORBITAL Cloud modelleri API anahtarı olmadan, sınırsız kullanılabilir."
+                                                            : "İsteğe bağlı. Giriş yapınca ORBITAL Cloud modelleri API anahtarı olmadan, ücretsiz kullanılabilir (günlük adil kullanım sınırı var)."
                                 divider: false
                                 OButton {
                                     visible: !App.accountSignedIn && !App.accountBusy

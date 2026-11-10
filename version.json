@@ -2,7 +2,7 @@
   "version": "0.5.0",
   "tag_name": "v0.5.0",
   "name": "Orbital v0.5.0",
-  "body": "EdgeAccount ile giriş eklendi: giriş yapınca ORBITAL Cloud modelleri (GPT-OSS 120B/20B, Qwen 3.8 27B) API anahtarı olmadan, sınırsız kullanılabilir. Kota/limit kilitleri artık süreli; süre dolunca kendiliğinden açılıyor. opencode altyapısı tamamen kaldırıldı, ORBITAL yalnızca kendi motoruyla (araçlar, skill, eklenti, MCP) çalışıyor. Güncellemeler artık orbital.oedge.xyz/guncelleme adresinden geliyor.",
+  "body": "EdgeAccount ile giriş eklendi: giriş yapınca ORBITAL Cloud modelleri (GPT-OSS 120B/20B, Qwen 3.8 27B) API anahtarı olmadan, ücretsiz kullanılabilir (günlük 5 milyon token, dakikada 40 istek). Kota/limit kilitleri artık süreli; süre dolunca kendiliğinden açılıyor. opencode altyapısı tamamen kaldırıldı, ORBITAL yalnızca kendi motoruyla (araçlar, skill, eklenti, MCP) çalışıyor. Güncellemeler artık orbital.oedge.xyz/guncelleme adresinden geliyor.",
   "assets": [
     {
       "name": "Orbital-x86_64.AppImage",

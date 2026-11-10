@@ -6,7 +6,7 @@
 
 ## Özellikler
 
-- **ORBITAL Cloud (EdgeAccount):** Ayarlar → Genel → *EdgeAccount ile giriş yap*. GPT-OSS 120B/20B ve Qwen 3.8 modelleri API anahtarı olmadan, sınırsız; istekler orbital.oedge.xyz üzerinden geçer.
+- **ORBITAL Cloud (EdgeAccount):** Ayarlar → Genel → *EdgeAccount ile giriş yap*. GPT-OSS 120B/20B ve Qwen 3.8 modelleri API anahtarı olmadan, ücretsiz (günlük adil kullanım sınırıyla); istekler orbital.oedge.xyz üzerinden geçer.
 - **Süreli model kilitleri:** Kota/limit hatası alan model 🔒 ile kilitlenir ve sağlayıcının bildirdiği süre (yoksa 5 dk–6 sa) dolunca kendiliğinden açılır; `/kilit-ac` ile hemen açılabilir.
 - **Kendi sağlayıcıların:** Ayarlar → Sağlayıcılar'dan OpenAI, Anthropic, Google Gemini, OpenRouter, DeepSeek, Groq, Mistral, xAI ya da herhangi bir OpenAI uyumlu adres. Anahtar bağlanmadan önce test edilir.
 - **Gerçek bir kod ajanı:** dosya okur, yazar, düzenler, komut çalıştırır, arama yapar. Riskli adımlardan önce izin ister; araç başına izin ayarlanabilir.
