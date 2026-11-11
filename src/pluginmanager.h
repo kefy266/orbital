@@ -20,7 +20,8 @@ struct PluginAction
 //   mcp           -> MCP servers (tools for the model)
 //   skills        -> a folder of skills bundled with the plugin
 //   instructions  -> markdown files appended to the system instructions
-//   tools         -> script tools: executable gets JSON args on stdin
+//   tools         -> script tools (Orbital Core): executable gets JSON args on stdin
+//   opencodePlugins -> opencode server plugins (JS/TS, opencode engine)
 //   actions       -> Orbital toolbar buttons
 //   hooks.beforePrompt -> executable that can rewrite or block outgoing prompts
 struct Plugin
@@ -62,6 +63,7 @@ public:
     QJsonObject mcpServers() const;   // name -> {type, command[] | url, ...}
     QList<QPair<QString, QJsonObject>> scriptTools() const; // (plugin dir, tool def)
     QStringList instructionFiles() const;
+    QStringList opencodePlugins() const;
     QJsonObject permissions() const;
     // Id of the enabled plugin that allows every tool ("*": "allow"), if any.
     QString autoModePlugin() const;

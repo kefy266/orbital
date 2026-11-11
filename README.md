@@ -2,11 +2,12 @@
 
 [![Build](https://github.com/kefy266/orbital/actions/workflows/build.yml/badge.svg)](https://github.com/kefy266/orbital/actions/workflows/build.yml) · **Site:** https://kefy266.github.io/orbital
 
-**Skill ve eklenti destekli, sade bir masaüstü AI kod asistanı.** Qt Quick (QML) ile yazıldı, sistemin açık/koyu temasını izler. İsteğe bağlı EdgeAccount girişiyle API anahtarı gerektirmeyen ORBITAL Cloud modelleriyle çalışır; istersen kendi OpenAI, Anthropic, Gemini… anahtarlarını bağlayabilirsin.
+**Skill ve eklenti destekli, sade bir masaüstü AI kod asistanı.** Qt Quick (QML) ile yazıldı, sistemin açık/koyu temasını izler. Hesap ya da API anahtarı gerektirmeyen ücretsiz ORBITAL modelleriyle çalışır; istersen kendi OpenAI, Anthropic, Gemini… anahtarlarını bağlayabilirsin.
 
 ## Özellikler
 
-- **ORBITAL Cloud (EdgeAccount):** Ayarlar → Genel → *EdgeAccount ile giriş yap*. GPT-OSS 120B/20B ve Qwen 3.8 modelleri API anahtarı olmadan, ücretsiz (günlük adil kullanım sınırıyla); istekler orbital.oedge.xyz üzerinden geçer.
+- **Ücretsiz ORBITAL modelleri:** DeepSeek, GLM, MiniMax… hesap ya da API anahtarı gerekmeden, doğrudan bu bilgisayardan; model listesinde her zaman en üstte. Ayarlar → Motor'dan Orbital Core'a geçilebilir.
+- **Hazır REA skill'i:** `reverse-engineer-anything` (github.com/morluto/rea, MIT) uygulama ve binary'leri tersine mühendislikle inceler; araçları için Ayarlar → Eklentiler → *REA (MCP)* açılır (Node.js gerekir).
 - **Süreli model kilitleri:** Kota/limit hatası alan model 🔒 ile kilitlenir ve sağlayıcının bildirdiği süre (yoksa 5 dk–6 sa) dolunca kendiliğinden açılır; `/kilit-ac` ile hemen açılabilir.
 - **Kendi sağlayıcıların:** Ayarlar → Sağlayıcılar'dan OpenAI, Anthropic, Google Gemini, OpenRouter, DeepSeek, Groq, Mistral, xAI ya da herhangi bir OpenAI uyumlu adres. Anahtar bağlanmadan önce test edilir.
 - **Gerçek bir kod ajanı:** dosya okur, yazar, düzenler, komut çalıştırır, arama yapar. Riskli adımlardan önce izin ister; araç başına izin ayarlanabilir.
@@ -90,7 +91,7 @@ Her commit'te [GitHub Actions](https://github.com/kefy266/orbital/actions) üç 
 src/
   engine.h            ortak motor arayüzü
   nativeengine.*      Orbital Core: model API'lerine doğrudan bağlanan ajan döngüsü (araçlar, skill, eklenti, MCP)
-  edgeaccount.*       EdgeAccount girişi (OIDC + PKCE, 127.0.0.1 dönüşü) ve ORBITAL Cloud oturumu
+  edgeaccount.*       İsteğe bağlı EdgeAccount girişi (OIDC + PKCE, 127.0.0.1 dönüşü)
   llm.*               OpenAI uyumlu ve Anthropic akışlı istemci
   tools.* mcpclient.* dosya/kabuk/arama araçları, MCP istemcisi
   skillmanager.* pluginmanager.*
@@ -99,7 +100,6 @@ resources/qml/        arayüz (Main, Sidebar, ChatView, Composer, SettingsDialog
 resources/skills|plugins/  ilk açılışta kurulan örnekler
 ```
 
-ORBITAL Cloud, EdgeAccount ile giriş yapan kullanıcıların isteklerini `orbital.oedge.xyz` üzerinden model sağlayıcısına iletir; sağlayıcı anahtarları yalnızca sunucuda durur, kullanıcı başına adil kullanım kotası orada uygulanır.
 
 ## Dosyalar
 

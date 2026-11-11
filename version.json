@@ -1,28 +1,28 @@
 {
-  "version": "0.5.0",
-  "tag_name": "v0.5.0",
-  "name": "Orbital v0.5.0",
-  "body": "EdgeAccount ile giriş eklendi: giriş yapınca ORBITAL Cloud modelleri (GPT-OSS 120B/20B, Qwen 3.8 27B) API anahtarı olmadan, ücretsiz kullanılabilir (günlük 5 milyon token, dakikada 40 istek). Kota/limit kilitleri artık süreli; süre dolunca kendiliğinden açılıyor. opencode altyapısı tamamen kaldırıldı, ORBITAL yalnızca kendi motoruyla (araçlar, skill, eklenti, MCP) çalışıyor. Güncellemeler artık orbital.oedge.xyz/guncelleme adresinden geliyor.",
+  "version": "0.5.1",
+  "tag_name": "v0.5.1",
+  "name": "Orbital v0.5.1",
+  "body": "Ücretsiz ORBITAL modelleri geri geldi: DeepSeek, GLM, MiniMax… hesap ya da API anahtarı olmadan, doğrudan bu bilgisayardan; model listesinde her zaman en üstte. Yeni arayüz: Sohbet/Kod geçişi, proje ağacı, oturum paneli ve mesaj kutusunda model seçici. Hazır REA tersine mühendislik skill'i (araçlar için Ayarlar → Eklentiler → REA (MCP)). ORBITAL Cloud modelleri kaldırıldı. Ücretsiz kota dolunca modeller kilitlenip başka modele geçilir.",
   "assets": [
     {
       "name": "Orbital-x86_64.AppImage",
-      "browser_download_url": "https://orbital.oedge.xyz/guncelleme/v0.5.0/Orbital-x86_64.AppImage"
+      "browser_download_url": "https://orbital.oedge.xyz/guncelleme/v0.5.1/Orbital-x86_64.AppImage"
     },
     {
       "name": "Orbital-linux-amd64.deb",
-      "browser_download_url": "https://orbital.oedge.xyz/guncelleme/v0.5.0/Orbital-linux-amd64.deb"
+      "browser_download_url": "https://orbital.oedge.xyz/guncelleme/v0.5.1/Orbital-linux-amd64.deb"
     },
     {
       "name": "Orbital-windows-x64.zip",
-      "browser_download_url": "https://orbital.oedge.xyz/guncelleme/v0.5.0/Orbital-windows-x64.zip"
+      "browser_download_url": "https://orbital.oedge.xyz/guncelleme/v0.5.1/Orbital-windows-x64.zip"
     },
     {
       "name": "Orbital-macos-arm64.dmg",
-      "browser_download_url": "https://orbital.oedge.xyz/guncelleme/v0.5.0/Orbital-macos-arm64.dmg"
+      "browser_download_url": "https://orbital.oedge.xyz/guncelleme/v0.5.1/Orbital-macos-arm64.dmg"
     },
     {
       "name": "orbital-linux-x86_64.tar.gz",
-      "browser_download_url": "https://orbital.oedge.xyz/guncelleme/v0.5.0/orbital-linux-x86_64.tar.gz"
+      "browser_download_url": "https://orbital.oedge.xyz/guncelleme/v0.5.1/orbital-linux-x86_64.tar.gz"
     }
   ]
 }

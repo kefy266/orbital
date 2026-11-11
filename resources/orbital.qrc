@@ -22,6 +22,7 @@
     <file>qml/SponsorCard.qml</file>
     <file>qml/ChatAdBanner.qml</file>
     <file>qml/Sidebar.qml</file>
+    <file>qml/SidePanel.qml</file>
     <file>qml/ChatView.qml</file>
     <file>qml/CodeBlock.qml</file>
     <file>qml/Composer.qml</file>
@@ -34,6 +35,17 @@
     <file alias="bundled/skills/kod-inceleme/SKILL.md">skills/kod-inceleme/SKILL.md</file>
     <file alias="bundled/skills/commit-mesaji/SKILL.md">skills/commit-mesaji/SKILL.md</file>
     <file alias="bundled/skills/turkce-yanit/SKILL.md">skills/turkce-yanit/SKILL.md</file>
+    <file alias="bundled/skills/reverse-engineer-anything/SKILL.md">skills/reverse-engineer-anything/SKILL.md</file>
+    <file alias="bundled/skills/reverse-engineer-anything/LICENSE">skills/reverse-engineer-anything/LICENSE</file>
+    <file alias="bundled/skills/reverse-engineer-anything/references/android-applications.md">skills/reverse-engineer-anything/references/android-applications.md</file>
+    <file alias="bundled/skills/reverse-engineer-anything/references/connection-and-recovery.md">skills/reverse-engineer-anything/references/connection-and-recovery.md</file>
+    <file alias="bundled/skills/reverse-engineer-anything/references/desktop-build.md">skills/reverse-engineer-anything/references/desktop-build.md</file>
+    <file alias="bundled/skills/reverse-engineer-anything/references/environments.md">skills/reverse-engineer-anything/references/environments.md</file>
+    <file alias="bundled/skills/reverse-engineer-anything/references/evidence-workflows.md">skills/reverse-engineer-anything/references/evidence-workflows.md</file>
+    <file alias="bundled/skills/reverse-engineer-anything/references/javascript-applications.md">skills/reverse-engineer-anything/references/javascript-applications.md</file>
+    <file alias="bundled/skills/reverse-engineer-anything/references/native-and-artifacts.md">skills/reverse-engineer-anything/references/native-and-artifacts.md</file>
+    <file alias="bundled/skills/reverse-engineer-anything/references/runtime-observation.md">skills/reverse-engineer-anything/references/runtime-observation.md</file>
+    <file alias="bundled/plugins/rea-mcp/plugin.json">plugins/rea-mcp/plugin.json</file>
     <file alias="bundled/plugins/git-araclari/plugin.json">plugins/git-araclari/plugin.json</file>
     <file alias="bundled/plugins/git-araclari/skills/git-akisi/SKILL.md">plugins/git-araclari/skills/git-akisi/SKILL.md</file>
     <file alias="bundled/plugins/sistem-araclari/plugin.json">plugins/sistem-araclari/plugin.json</file>

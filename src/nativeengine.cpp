@@ -350,6 +350,11 @@ void NativeEngine::step(Run *run)
         if (v.toObject().value(QStringLiteral("role")).toString() != QLatin1String("notice"))
             req.messages << v;
     req.tools = m_tools->definitions(run->agent == QLatin1String("plan"));
+    // ORBITAL Web is a plain chat service with its own system prompt: no tools, no agent prompt.
+    if (provider.id == QLatin1String("orbital-web")) {
+        req.system.clear();
+        req.tools = {};
+    }
 
     const QString sid = run->sessionId;
     const quint64 serial = run->serial;

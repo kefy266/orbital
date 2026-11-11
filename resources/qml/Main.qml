@@ -15,12 +15,14 @@ ApplicationWindow {
     font.family: Theme.font
 
     property bool sidebarOpen: width >= 900
+    property bool panelOpen: false
     readonly property bool chatting: App.chat.count > 0 || App.sessionId.length > 0
 
     function openSettings(page) { settings.openAt(page || "general") }
 
     Shortcut { sequence: "Ctrl+N"; onActivated: { App.newChat(); composer.focusInput() } }
     Shortcut { sequence: "Ctrl+B"; onActivated: window.sidebarOpen = !window.sidebarOpen }
+    Shortcut { sequence: "Ctrl+Shift+B"; onActivated: window.panelOpen = !window.panelOpen }
     Shortcut { sequence: "Ctrl+,"; onActivated: window.openSettings("general") }
     Shortcut { sequence: "Ctrl+L"; onActivated: composer.focusInput() }
     Shortcut { sequence: "Esc"; enabled: App.busy; onActivated: App.stop() }
@@ -75,18 +77,55 @@ ApplicationWindow {
                         tip: "Yeni sohbet (Ctrl+N)"
                         onClicked: App.newChat()
                     }
-                    ModelPicker { Layout.leftMargin: 4 }
-                    Text {
-                        Layout.fillWidth: true
-                        Layout.leftMargin: 12
-                        horizontalAlignment: Text.AlignHCenter
-                        text: App.sessionTitle
-                        elide: Text.ElideRight
-                        font.family: Theme.font
-                        font.pixelSize: Theme.fontUi
-                        color: Theme.textMuted
+                    // Chat title with its menu
+                    AbstractButton {
+                        id: titleButton
+                        Layout.leftMargin: 4
+                        Layout.maximumWidth: header.width - 140
+                        implicitHeight: 34
+                        implicitWidth: titleRow.implicitWidth + 24
+                        hoverEnabled: App.sessionId.length > 0
+                        enabled: App.sessionId.length > 0
+                        onClicked: titleMenu.popup(titleButton, 0, titleButton.height + 4)
+                        background: Rectangle {
+                            radius: Theme.radiusSm + 2
+                            color: titleButton.hovered || titleMenu.visible ? Theme.hover : "transparent"
+                        }
+                        contentItem: Row {
+                            id: titleRow
+                            spacing: 6
+                            leftPadding: 10
+                            Text {
+                                text: App.sessionTitle.length ? App.sessionTitle : (App.isNoFolder ? "Yeni sohbet" : App.projectName)
+                                width: Math.min(implicitWidth, header.width - 200)
+                                elide: Text.ElideRight
+                                font.family: Theme.font
+                                font.pixelSize: Theme.fontUi + 1
+                                font.weight: Font.Medium
+                                color: Theme.text
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                            Icon {
+                                visible: titleButton.enabled
+                                name: "chevron-down"
+                                size: 14
+                                color: Theme.textFaint
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                        }
+                        OMenu {
+                            id: titleMenu
+                            OMenuItem { text: "Yeniden adlandır"; iconName: "pencil"; onTriggered: titleRename.ask(App.sessionId, App.sessionTitle) }
+                            OMenuItem { text: "Markdown olarak dışa aktar"; iconName: "file"; onTriggered: App.exportChatAsMarkdown() }
+                            OMenuItem { text: "Sohbeti sil"; iconName: "trash"; danger: true; onTriggered: titleDelete.open() }
+                        }
                     }
-                    IconButton { iconName: "settings"; tip: "Ayarlar (Ctrl+,)"; onClicked: window.openSettings("general") }
+                    Item { Layout.fillWidth: true }
+                    IconButton {
+                        iconName: "panel-right"
+                        tip: window.panelOpen ? "Paneli kapat (Ctrl+Shift+B)" : "Oturum paneli (Ctrl+Shift+B)"
+                        onClicked: window.panelOpen = !window.panelOpen
+                    }
                 }
             }
 
@@ -161,7 +200,7 @@ ApplicationWindow {
                 }
                 Text {
                     Layout.alignment: Qt.AlignHCenter
-                    text: "<b>" + App.projectName + "</b> projesinde bugün ne yapalım?"
+                    text: App.isNoFolder ? "Bugün ne konuşalım?" : "<b>" + App.projectName + "</b> projesinde bugün ne yapalım?"
                     textFormat: Text.StyledText
                     font.family: Theme.font
                     font.pixelSize: Theme.fontBody
@@ -204,7 +243,12 @@ ApplicationWindow {
                 width: Math.min(Theme.chatWidth, parent.width - 48)
                 spacing: 8
                 Repeater {
-                    model: [
+                    model: App.isNoFolder ? [
+                        { icon: "bulb", label: "Fikir üret", prompt: "Bana bugün üzerinde çalışabileceğim 5 yaratıcı proje fikri öner, her biri için kısa bir açıklama yaz." },
+                        { icon: "file", label: "Metni düzelt", prompt: "Göndereceğim metnin yazım ve anlatım hatalarını düzelt, daha akıcı hale getir. Metin:" },
+                        { icon: "globe", label: "Bir konuyu anlat", prompt: "Bana yapay zekanın nasıl çalıştığını sade bir dille anlat." },
+                        { icon: "terminal", label: "Kod örneği", prompt: "Python'da bir klasördeki dosyaları boyutuna göre sıralayan kısa bir betik yaz ve açıkla." }
+                    ] : [
                         { icon: "search", label: "Projeyi açıkla", prompt: "Bu projenin yapısını incele: ne işe yaradığını, ana bileşenlerini ve önemli dosyalarını kısaca açıkla." },
                         { icon: "terminal", label: "Derle ve test et", prompt: "Projeyi derle ve testleri çalıştır. Hata varsa sebebini bul ve düzelt." },
                         { icon: "file", label: "README yaz", prompt: "Bu proje için kurulum, kullanım ve geliştirme adımlarını anlatan bir README.md yaz." },
@@ -216,7 +260,8 @@ ApplicationWindow {
                         hoverEnabled: true
                         implicitHeight: 36
                         implicitWidth: chipRow.implicitWidth + 26
-                        onClicked: App.submit(modelData.prompt)
+                        // Prompts ending in ':' need the user's text: fill the composer instead of sending.
+                        onClicked: modelData.prompt.endsWith(":") ? composer.setText(modelData.prompt + " ") : App.submit(modelData.prompt)
                         background: Rectangle {
                             radius: 18
                             color: chip.hovered ? Theme.hover : "transparent"
@@ -249,6 +294,28 @@ ApplicationWindow {
                 z: 5
             }
         }
+
+        SidePanel {
+            Layout.fillHeight: true
+            Layout.preferredWidth: window.panelOpen ? 300 : 0
+            visible: Layout.preferredWidth > 0
+            clip: true
+            Behavior on Layout.preferredWidth { NumberAnimation { duration: Theme.normal; easing.type: Easing.OutCubic } }
+            onClose: window.panelOpen = false
+            onOpenSettings: page => window.openSettings(page)
+        }
+    }
+
+    RenameDialog {
+        id: titleRename
+        onRenamed: newTitle => App.renameSession(targetId, newTitle)
+    }
+    ConfirmDialog {
+        id: titleDelete
+        heading: "Sohbet silinsin mi?"
+        message: "“" + App.sessionTitle + "” kalıcı olarak silinecek."
+        confirmText: "Sil"
+        onConfirmed: App.deleteSession(App.sessionId)
     }
 
     SettingsDialog { id: settings }

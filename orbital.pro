@@ -17,6 +17,7 @@ SOURCES += \
     src/mcpclient.cpp \
     src/tools.cpp \
     src/nativeengine.cpp \
+    src/opencodeengine.cpp \
     src/edgeaccount.cpp \
     src/skillmanager.cpp \
     src/pluginmanager.cpp \
@@ -34,6 +35,7 @@ HEADERS += \
     src/mcpclient.h \
     src/tools.h \
     src/nativeengine.h \
+    src/opencodeengine.h \
     src/edgeaccount.h \
     src/skillmanager.h \
     src/pluginmanager.h \
@@ -50,12 +52,12 @@ win32 {
     TARGET = Orbital
     QMAKE_TARGET_DESCRIPTION = Orbital
     QMAKE_TARGET_PRODUCT = Orbital
-    VERSION = 0.5.0
+    VERSION = 0.5.1
     RC_ICONS = resources/orbital.ico
 }
 macx {
     TARGET = Orbital
-    VERSION = 0.5.0
+    VERSION = 0.5.1
     ICON = resources/orbital.icns
     QMAKE_TARGET_BUNDLE_PREFIX = io.github.kefy266
     QMAKE_MACOSX_DEPLOYMENT_TARGET = 12.0

@@ -216,9 +216,9 @@ Popup {
                                 title: App.accountSignedIn ? (App.accountName.length > 0 ? App.accountName : App.accountEmail)
                                                            : "EdgeAccount ile giriş yap"
                                 subtitle: App.accountSignedIn
-                                          ? App.accountEmail + " · ORBITAL Cloud modelleri API anahtarı olmadan, ücretsiz kullanılabilir (günlük adil kullanım sınırı var)."
+                                          ? App.accountEmail
                                           : App.accountBusy ? "Tarayıcıda girişi tamamla…"
-                                                            : "İsteğe bağlı. Giriş yapınca ORBITAL Cloud modelleri API anahtarı olmadan, ücretsiz kullanılabilir (günlük adil kullanım sınırı var)."
+                                                            : "İsteğe bağlı Origin Edge hesabı."
                                 divider: false
                                 OButton {
                                     visible: !App.accountSignedIn && !App.accountBusy
@@ -229,6 +229,21 @@ Popup {
                                 }
                                 OButton { visible: App.accountBusy; text: "Vazgeç"; onClicked: App.accountCancel() }
                                 OButton { visible: App.accountSignedIn; text: "Çıkış yap"; onClicked: App.accountSignOut() }
+                            }
+                        }
+                        SectionLabel { text: "MOTOR" }
+                        Card {
+                            SettingRow {
+                                title: "Kod modu motoru"
+                                subtitle: App.codeEngine === "opencode"
+                                          ? "ORBITAL: ücretsiz ORBITAL modelleriyle, bu bilgisayarda çalışan ajan motoru."
+                                          : "Orbital Core: Orbital'in kendi motoru; Ayarlar → Sağlayıcılar'dan eklediğin modellerle çalışır. (Sohbet modu her zaman ORBITAL Web'i kullanır.)"
+                                divider: false
+                                Segmented {
+                                    model: [{ value: "opencode", label: "ORBITAL" }, { value: "native", label: "Orbital Core" }]
+                                    value: App.codeEngine
+                                    onPicked: v => { if (v !== App.codeEngine) App.chooseEngine(v) }
+                                }
                             }
                         }
                         SectionLabel { text: "GÖRÜNÜM" }
@@ -254,14 +269,15 @@ Popup {
                             Repeater {
                                 model: [
                                     { key: "config", label: "Yapılandırma dosyası" },
-                                    { key: "data", label: "Orbital veri klasörü" }
+                                    { key: "data", label: "Orbital veri klasörü" },
+                                    { key: "engine", label: "ORBITAL motor klasörü" }
                                 ]
                                 delegate: SettingRow {
                                     required property var modelData
                                     required property int index
                                     title: modelData.label
                                     subtitle: App.paths()[modelData.key]
-                                    divider: index < 1
+                                    divider: index < 2
                                     IconButton { iconName: "external"; tip: "Aç"; onClicked: App.openPath(App.paths()[modelData.key]) }
                                 }
                             }

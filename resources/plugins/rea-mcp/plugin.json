@@ -1,0 +1,11 @@
+{
+  "id": "rea-mcp",
+  "name": "REA (MCP)",
+  "version": "1.0.0",
+  "author": "morluto (MIT) · Orbital",
+  "description": "REA tersine mühendislik araçları (github.com/morluto/rea): native, Electron/JS, Android ve paketlenmiş uygulamaları inceler. 'reverse-engineer-anything' skill'i bu araçları kullanır. Node.js (npx) gerektirir; ilk açılışta rea-agents paketini indirir.",
+  "enabledByDefault": false,
+  "mcp": {
+    "rea": { "type": "local", "command": ["npx", "-y", "rea-agents@latest", "mcp"] }
+  }
+}

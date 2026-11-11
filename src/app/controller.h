@@ -25,6 +25,7 @@ class AppController : public QObject
     Q_PROPERTY(SessionModel *sessions READ sessions CONSTANT)
 
     Q_PROPERTY(QString engineId READ engineId NOTIFY engineChanged)
+    Q_PROPERTY(QString codeEngine READ codeEngine NOTIFY engineChanged)
     Q_PROPERTY(bool engineReady READ engineReady NOTIFY engineChanged)
     Q_PROPERTY(QString status READ status NOTIFY statusChanged)
     Q_PROPERTY(bool statusIsError READ statusIsError NOTIFY statusChanged)
@@ -122,6 +123,9 @@ public:
     QString projectFilter() const { return m_projectFilter; }
     void setProjectFilter(const QString &filter);
     Q_INVOKABLE void switchEngine(const QString &id);
+    // Settings → Motor: remembers that the user picked the engine on purpose.
+    Q_INVOKABLE void chooseEngine(const QString &id);
+    QString codeEngine() const;
     Q_INVOKABLE void setModel(const QString &ref);
     Q_INVOKABLE void attachSkill(const QString &name);
     Q_INVOKABLE void detachSkill(const QString &name);
@@ -184,6 +188,8 @@ public:
     Q_INVOKABLE void setPermission(const QString &tool, const QString &policy);
     Q_INVOKABLE int maxSteps() const;
     Q_INVOKABLE void setMaxSteps(int steps);
+    Q_INVOKABLE QString opencodeVersion() const;
+    Q_INVOKABLE void setOpencodeVersion(const QString &version);
     Q_INVOKABLE QVariantMap paths() const;
     // Store: catalog of skills and plugins hosted in the Orbital repository.
     QVariantList storeItems() const;
@@ -194,7 +200,7 @@ public:
     Q_INVOKABLE void installStoreItem(const QString &id);
     Q_INVOKABLE void removeStoreItem(const QString &id);
 
-    // EdgeAccount: optional sign-in that unlocks ORBITAL Cloud models (no API key, no limits).
+    // EdgeAccount: optional sign-in (Origin Edge account).
     bool accountSignedIn() const;
     bool accountBusy() const;
     QString accountEmail() const;
@@ -314,6 +320,8 @@ private:
     void expireLocks();
     QString lockText(const QString &ref) const;
     QString fallbackModel() const;
+    QString preferredEngine() const;
+    QString modelSettingKey() const;
     EdgeAccount *m_account = nullptr;
     bool handleSlashCommand(const QString &name, const QString &args);
 

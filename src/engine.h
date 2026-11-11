@@ -54,8 +54,10 @@ struct QuestionRequest
     QJsonArray questions;
 };
 
-// What Orbital's UI talks to. Implemented by NativeEngine, Orbital's own agent
-// loop that talks to model APIs (or ORBITAL Cloud) directly.
+// What Orbital's UI talks to. Two implementations:
+//   OpencodeEngine — an Orbital-managed, isolated opencode server (default; free OpenCode models)
+//   NativeEngine   — Orbital Core, Orbital's own agent loop that talks to model APIs directly
+// Both stream the same signals so the UI does not care which one is active.
 //
 // History items handed to loadHistory's callback use this neutral shape:
 //   {role:"user", text}

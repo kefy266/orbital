@@ -43,6 +43,7 @@ Rectangle {
                         anchors.verticalCenter: parent.verticalCenter
                     }
                     Text {
+                        visible: !!modelData.label
                         text: modelData.label
                         font.family: Theme.font
                         font.pixelSize: Theme.fontSmall

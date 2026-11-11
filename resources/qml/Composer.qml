@@ -216,7 +216,7 @@ Item {
 
                 Segmented {
                     implicitHeight: 30
-                    visible: App.agents.length > 1
+                    visible: App.agents.length > 1 && !App.isNoFolder
                     model: App.agents.map(a => ({ value: a.id,
                                                   label: a.id === "build" ? "Build" : a.id === "plan" ? "Plan" : a.id }))
                     value: App.agent
@@ -268,13 +268,7 @@ Item {
 
                 Item { Layout.fillWidth: true }
 
-                Text {
-                    text: App.usage
-                    visible: text.length > 0 && !root.large
-                    font.family: Theme.font
-                    font.pixelSize: Theme.fontCaption
-                    color: Theme.textFaint
-                }
+                ModelPicker { compact: true; opensUp: true }
 
                 AbstractButton {
                     id: sendButton

@@ -3,6 +3,7 @@
 #include "../config.h"
 #include "../edgeaccount.h"
 #include "../nativeengine.h"
+#include "../opencodeengine.h"
 #include "../paths.h"
 #include "../platform.h"
 #include "../pluginmanager.h"
@@ -42,13 +43,6 @@ AppController::AppController(QObject *parent)
 {
     Config::ensureDefault();
     Paths::installBundledContent();
-    // Orbital no longer ships the opencode engine: drop what older versions downloaded.
-    for (const char *dir : {"/engine", "/opencode-home"})
-        QDir(Paths::dataDir() + QLatin1String(dir)).removeRecursively();
-    if (QJsonObject config = Config::raw(); config.contains(QStringLiteral("opencode"))) {
-        config.remove(QStringLiteral("opencode"));
-        Config::saveRaw(config, nullptr);
-    }
     reloadExtensions();
 
     const QJsonObject settings = Paths::loadSettings();
@@ -56,21 +50,14 @@ AppController::AppController(QObject *parent)
     if (m_directory.isEmpty() || !QDir(m_directory).exists() || m_directory == QDir::homePath() || m_directory == QStringLiteral("/"))
         m_directory = Paths::noFolderDir();
 
+    m_engines.insert(QStringLiteral("opencode"), new OpencodeEngine(m_skills, m_plugins, this));
     m_engines.insert(QStringLiteral("native"), new NativeEngine(m_skills, m_plugins, this));
 
     m_account = new EdgeAccount(m_nam, this);
     connect(m_account, &EdgeAccount::changed, this, &AppController::accountChanged);
     connect(m_account, &EdgeAccount::finished, this, [this](bool ok, const QString &message) {
+        Q_UNUSED(ok)
         Q_EMIT toast(message);
-        if (ok) {
-            // Start on ORBITAL Cloud right after signing in.
-            QJsonObject s = Paths::loadSettings();
-            s.insert(QStringLiteral("model.native"), QStringLiteral("orbital/gpt-oss-120b"));
-            Paths::saveSettings(s);
-            Config::setDefaultModel(QStringLiteral("orbital/gpt-oss-120b"));
-            unlockProvider(QStringLiteral("orbital/"));
-            refreshModels();
-        }
     });
 
     // Limit locks expire on their own; check every half minute.
@@ -93,8 +80,7 @@ AppController::~AppController()
 
 void AppController::start()
 {
-    // One engine for everyone: ORBITAL Cloud (EdgeAccount) plus any provider the user connects.
-    switchEngine(QStringLiteral("native"));
+    switchEngine(preferredEngine());
     QTimer::singleShot(4000, this, [this] { checkForUpdates(true); });
     QTimer::singleShot(6000, this, [this] { syncOfficialSkills(); });
 
@@ -260,6 +246,29 @@ void AppController::switchEngine(const QString &id)
     connectEngine();
     setStatus(QStringLiteral("Hazırlanıyor…"));
     m_engine->start(m_directory);
+}
+
+// Sohbet (no folder) talks to ORBITAL Web through Orbital Core. Kod uses the engine picked in
+// Settings → Motor ("codeEngine"), opencode by default.
+QString AppController::codeEngine() const
+{
+    const QString picked = Paths::loadSettings().value(QStringLiteral("codeEngine")).toString();
+    return m_engines.contains(picked) ? picked : QStringLiteral("opencode");
+}
+
+QString AppController::preferredEngine() const
+{
+    return isNoFolder() ? QStringLiteral("native") : codeEngine();
+}
+
+void AppController::chooseEngine(const QString &id)
+{
+    QJsonObject s = Paths::loadSettings();
+    s.insert(QStringLiteral("codeEngine"), id);
+    Paths::saveSettings(s);
+    Q_EMIT engineChanged();
+    if (!isNoFolder())
+        switchEngine(id);
 }
 
 void AppController::retryEngine()
@@ -428,7 +437,8 @@ void AppController::onEngineReady()
 static QString prettyModelName(QString name, bool *free)
 {
     static const QRegularExpression freeSuffix(QStringLiteral("[\\s_-]*free$"), QRegularExpression::CaseInsensitiveOption);
-    *free = name.contains(freeSuffix);
+    if (free) // callers that only want the display name pass nullptr
+        *free = name.contains(freeSuffix);
     name.remove(freeSuffix);
     if (!name.contains(QLatin1Char(' '))) {
         // A raw id: split into words and capitalise them.
@@ -461,7 +471,8 @@ static QString prettyModelName(QString name, bool *free)
 static QString prettyProviderName(const QString &id, const QString &name)
 {
     static const QHash<QString, QString> headings{
-        {QStringLiteral("orbital"), QStringLiteral("ORBITAL Cloud")},
+        {QStringLiteral("opencode"), QStringLiteral("ORBITAL Modelleri")},
+        {QStringLiteral("orbital-web"), QStringLiteral("ORBITAL Web")},
         {QStringLiteral("gemini"), QStringLiteral("Google Modelleri")},
         {QStringLiteral("google"), QStringLiteral("Google Modelleri")},
         {QStringLiteral("openai"), QStringLiteral("OpenAI Modelleri")},
@@ -482,30 +493,42 @@ void AppController::refreshModels()
         if (engine != m_engine)
             return;
         m_models.clear();
-        for (const ModelChoice &m : models) {
+        // ORBITAL's own (free) models always head the list; other providers keep their order.
+        // Sohbet lists only ORBITAL Web (yz.oedge.xyz); Kod never does (it has no tools).
+        const bool chat = isNoFolder();
+        QList<ModelChoice> ordered;
+        for (const ModelChoice &m : models)
+            if (chat ? m.provider == QLatin1String("orbital-web") : m.provider == QLatin1String("opencode"))
+                ordered << m;
+        if (!chat)
+            for (const ModelChoice &m : models)
+                if (m.provider != QLatin1String("opencode") && m.provider != QLatin1String("orbital-web"))
+                    ordered << m;
+        for (const ModelChoice &m : std::as_const(ordered)) {
             bool free = false;
             const QString pretty = prettyModelName(m.name.isEmpty() ? m.model : m.name, &free);
             m_models << QVariantMap{{QStringLiteral("ref"), m.ref()},
                                     {QStringLiteral("provider"), prettyProviderName(m.provider, m.providerName)},
                                     {QStringLiteral("model"), m.model},
                                     {QStringLiteral("name"), pretty},
-                                    {QStringLiteral("free"), free || m.provider == QLatin1String("orbital")},
+                                    {QStringLiteral("free"), free || m.provider == QLatin1String("orbital") || m.provider == QLatin1String("opencode")},
                                     {QStringLiteral("locked"), m_lockedModels.contains(m.ref())},
                                     {QStringLiteral("lockText"), lockText(m.ref())}};
         }
-        QString wanted = Paths::loadSettings().value(QStringLiteral("model.") + engine->id()).toString();
-        if (wanted.isEmpty() && engine->id() == QLatin1String("native"))
-            wanted = Config::defaultModel();
+        QString wanted = Paths::loadSettings().value(modelSettingKey()).toString();
+        if (wanted.isEmpty())
+            wanted = chat ? QStringLiteral("orbital-web/orbital:fast")
+                          : engine->id() == QLatin1String("native") ? Config::defaultModel() : QString();
         bool found = false;
-        for (const ModelChoice &m : models)
+        for (const ModelChoice &m : std::as_const(ordered))
             found = found || m.ref() == wanted;
         m_modelRef = found ? wanted : QString();
         if (m_modelRef.isEmpty() || m_lockedModels.contains(m_modelRef)) {
             const QString fallback = fallbackModel();
             if (!fallback.isEmpty())
                 m_modelRef = fallback;
-            else if (m_modelRef.isEmpty() && !models.isEmpty())
-                m_modelRef = models.first().ref();
+            else if (m_modelRef.isEmpty() && !ordered.isEmpty())
+                m_modelRef = ordered.first().ref();
         }
         Q_EMIT modelsChanged();
         Q_EMIT modelChanged();
@@ -520,9 +543,9 @@ void AppController::setModel(const QString &ref)
 {
     m_modelRef = ref;
     QJsonObject s = Paths::loadSettings();
-    s.insert(QStringLiteral("model.") + engineId(), ref);
+    s.insert(modelSettingKey(), ref);
     Paths::saveSettings(s);
-    if (engineId() == QLatin1String("native"))
+    if (engineId() == QLatin1String("native") && !isNoFolder())
         Config::setDefaultModel(ref);
     Q_EMIT modelChanged();
 }
@@ -713,7 +736,7 @@ void AppController::setProject(const QUrl &folder)
 
     Q_EMIT projectChanged();
     Q_EMIT projectsChanged();
-    switchEngine(engineId());
+    switchEngine(preferredEngine());
 }
 
 void AppController::openProjectPath(const QString &path)
@@ -1209,13 +1232,12 @@ void AppController::expireLocks()
                      : QStringLiteral("🔓 %1 modelin limiti sıfırlandı.").arg(freed.size()));
 }
 
-// First usable model after a lock: ORBITAL Cloud, then cheap fast models, then anything unlocked.
+// First usable model after a lock: free OpenCode models, then cheap fast models, then anything unlocked.
 QString AppController::fallbackModel() const
 {
     static const QStringList kPreferred{
-        QStringLiteral("orbital/gpt-oss-120b"),
-        QStringLiteral("orbital/qwen3.8-27b"),
-        QStringLiteral("orbital/gpt-oss-20b"),
+        QStringLiteral("opencode/deepseek-v4.1-flash-free"),
+        QStringLiteral("opencode/big-pickle"),
         QStringLiteral("gemini/gemini-3.5-flash"),
         QStringLiteral("gemini/gemini-3.5-flash-lite"),
         QStringLiteral("gemini/gemini-3-flash-preview"),
@@ -1241,6 +1263,10 @@ void AppController::lockModel(const QString &ref, const QString &reason)
     const QString providerPrefix = ref.section(QLatin1Char('/'), 0, 0) + QLatin1Char('/');
     // Account-wide limits lock every model of that provider.
     const bool lockAllProvider = (providerPrefix == QLatin1String("orbital/") && low.contains(QStringLiteral("günlük")))
+                              || (providerPrefix == QLatin1String("opencode/")
+                                  && (low.contains(QStringLiteral("free usage exceeded"))
+                                      || low.contains(QStringLiteral("free limit reached"))
+                                      || low.contains(QStringLiteral("free usage limit reached"))))
                               || (providerPrefix == QLatin1String("anthropic/")
                                   && low.contains(QStringLiteral("credit balance is too low")));
     const qint64 until = QDateTime::currentMSecsSinceEpoch() + lockDurationMs(reason);
@@ -1470,7 +1496,7 @@ bool AppController::handleSlashCommand(const QString &name, const QString &args)
             "- **Bağlı Skiller:** %12\n"
             "- **Token Kullanımı:** %13\n"
         ).arg(projectName(), projectPath(),
-              m_account->signedIn() ? QStringLiteral("Orbital Core + ORBITAL Cloud") : QStringLiteral("Orbital Core"),
+              engineId() == QLatin1String("opencode") ? QStringLiteral("ORBITAL") : QStringLiteral("Orbital Core"),
               engineReady() ? QStringLiteral("Hazır") : QStringLiteral("Başlatılıyor"),
               modelLabel(), modelRef(), isCurrentModelLocked() ? QStringLiteral("🔒 **[Limit/Kota Doldu]**") : QStringLiteral("✅ Normal"),
               m_agent == QLatin1String("build") ? QStringLiteral("Build") : QStringLiteral("Plan"),
@@ -2159,12 +2185,29 @@ void AppController::setMaxSteps(int steps)
     Config::saveRaw(config, nullptr);
 }
 
+QString AppController::opencodeVersion() const
+{
+    return OpencodeEngine::version();
+}
+
+void AppController::setOpencodeVersion(const QString &version)
+{
+    QJsonObject config = Config::raw();
+    QJsonObject oc = config.value(QStringLiteral("opencode")).toObject();
+    oc.insert(QStringLiteral("version"), version.trimmed());
+    config.insert(QStringLiteral("opencode"), oc);
+    Config::saveRaw(config, nullptr);
+    m_settingsDirty = true;
+}
+
 QVariantMap AppController::paths() const
 {
     return {{QStringLiteral("config"), Config::file()},
             {QStringLiteral("skills"), Paths::skillsDir()},
             {QStringLiteral("plugins"), Paths::pluginsDir()},
-            {QStringLiteral("data"), Paths::dataDir()}};
+            {QStringLiteral("data"), Paths::dataDir()},
+            {QStringLiteral("engine"), Paths::dataDir() + QStringLiteral("/engine")},
+            {QStringLiteral("opencodeHome"), OpencodeEngine::homeDir()}};
 }
 
 // ---------------------------------------------------------------- store
@@ -2445,16 +2488,13 @@ void AppController::accountCancel()
 void AppController::accountSignOut()
 {
     m_account->signOut();
-    if (m_modelRef.startsWith(QLatin1String("orbital/")))
-        m_modelRef.clear();
-    refreshModels();
     Q_EMIT toast(QStringLiteral("EdgeAccount oturumu kapatıldı."));
 }
 
 QString AppController::appVersion() const
 {
     const QString ver = QCoreApplication::applicationVersion();
-    return ver.isEmpty() ? QStringLiteral("0.5.0") : ver;
+    return ver.isEmpty() ? QStringLiteral("0.5.1") : ver;
 }
 
 void AppController::checkForUpdates(bool silent)
@@ -2743,3 +2783,8 @@ void AppController::applyUpdate()
     });
 }
 
+
+QString AppController::modelSettingKey() const
+{
+    return isNoFolder() ? QStringLiteral("model.chat") : QStringLiteral("model.") + engineId();
+}

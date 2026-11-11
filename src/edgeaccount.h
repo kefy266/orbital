@@ -10,9 +10,8 @@ class QTcpServer;
 class QTcpSocket;
 
 // Optional EdgeAccount sign-in (OpenID Connect + PKCE, loopback redirect per RFC 8252).
-// The EdgeAccount access token is traded once at ORBITAL Cloud for a long-lived
-// ORBITAL Cloud session token; with it, the "orbital" provider (Config::providers)
-// serves models through orbital.oedge.xyz without a provider API key.
+// The EdgeAccount access token is traded once at orbital.oedge.xyz for a long-lived
+// Orbital session token (models are no longer served through it).
 // The session lives in settings.json under "edgeAccount".
 class EdgeAccount : public QObject
 {
@@ -22,7 +21,7 @@ public:
 
     static QString issuer();
     static QString cloudUrl();   // https://orbital.oedge.xyz
-    static QString token();      // ORBITAL Cloud session token, empty when signed out
+    static QString token();      // Orbital session token, empty when signed out
 
     bool signedIn() const { return !token().isEmpty(); }
     QString email() const;

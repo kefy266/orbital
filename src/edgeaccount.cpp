@@ -203,7 +203,7 @@ void EdgeAccount::openCloudSession(const QString &accessToken)
         const QString token = o.value(QStringLiteral("token")).toString();
         if (token.isEmpty()) {
             const QString msg = o.value(QStringLiteral("error")).toObject().value(QStringLiteral("message")).toString();
-            fail(msg.isEmpty() ? tr("ORBITAL Cloud'a ulaşılamadı.") : msg);
+            fail(msg.isEmpty() ? tr("Oturum sunucusuna ulaşılamadı.") : msg);
             return;
         }
         QJsonObject s = Paths::loadSettings();

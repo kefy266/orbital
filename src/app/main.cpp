@@ -1,4 +1,4 @@
-// Orbital — Qt Quick front end over Orbital's native agent engine.
+// Orbital — Qt Quick front end over the opencode and native (Orbital Core) engines.
 
 #include "chatmodel.h"
 #include "controller.h"
@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
     QGuiApplication app(argc, argv);
     QGuiApplication::setApplicationName(QStringLiteral("Orbital"));
     QGuiApplication::setOrganizationName(QStringLiteral("Orbital"));
-    QGuiApplication::setApplicationVersion(QStringLiteral("0.5.0"));
+    QGuiApplication::setApplicationVersion(QStringLiteral("0.5.1"));
     QGuiApplication::setDesktopFileName(QStringLiteral("orbital"));
     QGuiApplication::setWindowIcon(QIcon(QStringLiteral(":/theme/orbital.svg")));
     if (QFontDatabase::families().contains(QStringLiteral("Inter")))

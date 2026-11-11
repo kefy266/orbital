@@ -3,13 +3,16 @@ import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import Orbital
 
-// Header button showing the current model; opens a searchable list grouped
-// by provider, with the engine switch on top.
+// Button showing the current model; opens a searchable list grouped by provider.
+// In the composer it is compact and opens upwards.
 AbstractButton {
     id: picker
+    property bool compact: false
+    property bool opensUp: false
+    readonly property real popupY: opensUp ? -popup.height - 6 : picker.height + 6
     hoverEnabled: true
-    implicitHeight: 34
-    implicitWidth: label.implicitWidth + 40
+    implicitHeight: compact ? 30 : 34
+    implicitWidth: Math.min(compact ? 220 : 400, label.implicitWidth + 40)
     onClicked: popup.opened ? popup.close() : popup.open()
 
     background: Rectangle {
@@ -22,10 +25,12 @@ AbstractButton {
         Text {
             id: label
             text: App.modelLabel
+            width: Math.min(implicitWidth, picker.implicitWidth - 40)
+            elide: Text.ElideRight
             font.family: Theme.font
-            font.pixelSize: Theme.fontUi + 1
+            font.pixelSize: picker.compact ? Theme.fontSmall + 1 : Theme.fontUi + 1
             font.weight: Font.Medium
-            color: Theme.text
+            color: picker.compact ? Theme.textMuted : Theme.text
             anchors.verticalCenter: parent.verticalCenter
         }
         Icon {
@@ -40,15 +45,14 @@ AbstractButton {
 
     Popup {
         id: popup
-        y: picker.height + 6
-        x: Math.min(0, parent.width - width)
+        y: picker.popupY
+        x: picker.opensUp ? Math.min(0, picker.width - width) : Math.min(0, parent.width - width)
         width: 380
         height: Math.min(520, layout.implicitHeight + 24)
         padding: 12
         onOpened: { search.text = ""; search.forceActiveFocus() }
         enter: Transition {
             NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.fast }
-            NumberAnimation { property: "y"; from: picker.height; to: picker.height + 6; duration: Theme.normal; easing.type: Easing.OutCubic }
         }
         exit: Transition { NumberAnimation { property: "opacity"; to: 0; duration: Theme.fast } }
         background: Rectangle { radius: Theme.radius + 2; color: Theme.elevated; border.width: 1; border.color: Theme.border }
@@ -57,43 +61,6 @@ AbstractButton {
             id: layout
             spacing: 10
 
-            // ORBITAL Cloud needs no API key: offer EdgeAccount sign-in right where models are picked.
-            AbstractButton {
-                id: signIn
-                visible: !App.accountSignedIn
-                Layout.fillWidth: true
-                implicitHeight: 54
-                hoverEnabled: true
-                enabled: !App.accountBusy
-                onClicked: App.accountSignIn()
-                background: Rectangle {
-                    radius: Theme.radiusSm + 2
-                    color: signIn.hovered ? Theme.hover : Theme.surface
-                    border.width: 1
-                    border.color: Theme.border
-                }
-                contentItem: ColumnLayout {
-                    spacing: 2
-                    Text {
-                        Layout.leftMargin: 12
-                        text: App.accountBusy ? "Tarayıcıda girişi tamamla…" : "EdgeAccount ile giriş yap"
-                        font.family: Theme.font
-                        font.pixelSize: Theme.fontUi
-                        font.weight: Font.Medium
-                        color: Theme.text
-                    }
-                    Text {
-                        Layout.leftMargin: 12
-                        Layout.rightMargin: 12
-                        Layout.fillWidth: true
-                        elide: Text.ElideRight
-                        text: "ORBITAL Cloud modelleri: API anahtarı yok, sınır yok"
-                        font.family: Theme.font
-                        font.pixelSize: Theme.fontCaption
-                        color: Theme.textFaint
-                    }
-                }
-            }
             OTextField {
                 id: search
                 Layout.fillWidth: true
