@@ -1,5 +1,6 @@
 #include "config.h"
 
+#include "edgeaccount.h"
 #include "paths.h"
 
 #include <QFile>
@@ -113,6 +114,18 @@ QList<ProviderConfig> providers()
         p.name = QStringLiteral("ORBITAL Web");
         p.type = QStringLiteral("openai");
         p.baseUrl = qEnvironmentVariable("ORBITAL_WEB_URL", QStringLiteral("https://yz.oedge.xyz")) + QStringLiteral("/v1");
+        // Signed in: the server opens Pro/Ultra by the account's Origin Edge package (Edge+, Edge Pro, developer).
+        p.apiKey = EdgeAccount::token();
+        out.prepend(p);
+    }
+    // ORBITAL Code: ORBITAL Cloud models (orbital.oedge.xyz) in Kod, for developer accounts, no daily quota.
+    if (EdgeAccount::developer() && !all.contains(QStringLiteral("orbital"))) {
+        ProviderConfig p;
+        p.id = QStringLiteral("orbital");
+        p.name = QStringLiteral("ORBITAL Code");
+        p.type = QStringLiteral("openai");
+        p.baseUrl = EdgeAccount::cloudUrl() + QStringLiteral("/v1");
+        p.apiKey = EdgeAccount::token();
         out.prepend(p);
     }
     return out;

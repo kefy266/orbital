@@ -59,6 +59,16 @@ AppController::AppController(QObject *parent)
         Q_UNUSED(ok)
         Q_EMIT toast(message);
     });
+    // Developer status / package changed: providers changed, so restart the engine when idle.
+    connect(m_account, &EdgeAccount::entitlementsChanged, this, [this] {
+        if (EdgeAccount::developer())
+            Q_EMIT toast(QStringLiteral("ORBITAL Code açıldı: geliştirici hesabınla Kod modunda günlük kotasız"));
+        if (m_busy.isEmpty() && m_engine)
+            switchEngine(preferredEngine());
+        else
+            m_settingsDirty = true;
+    });
+    QTimer::singleShot(1500, m_account, &EdgeAccount::refreshEntitlements);
 
     // Limit locks expire on their own; check every half minute.
     m_lockTimer.setInterval(30 * 1000);
@@ -473,6 +483,7 @@ static QString prettyProviderName(const QString &id, const QString &name)
     static const QHash<QString, QString> headings{
         {QStringLiteral("opencode"), QStringLiteral("ORBITAL Modelleri")},
         {QStringLiteral("orbital-web"), QStringLiteral("ORBITAL Web")},
+        {QStringLiteral("orbital"), QStringLiteral("ORBITAL Code · geliştirici")},
         {QStringLiteral("gemini"), QStringLiteral("Google Modelleri")},
         {QStringLiteral("google"), QStringLiteral("Google Modelleri")},
         {QStringLiteral("openai"), QStringLiteral("OpenAI Modelleri")},
@@ -497,12 +508,18 @@ void AppController::refreshModels()
         // Sohbet lists only ORBITAL Web (yz.oedge.xyz); Kod never does (it has no tools).
         const bool chat = isNoFolder();
         QList<ModelChoice> ordered;
+        // Kod: ORBITAL Code (developers) first, then the free ORBITAL models, then everything else.
+        if (!chat)
+            for (const ModelChoice &m : models)
+                if (m.provider == QLatin1String("orbital"))
+                    ordered << m;
         for (const ModelChoice &m : models)
             if (chat ? m.provider == QLatin1String("orbital-web") : m.provider == QLatin1String("opencode"))
                 ordered << m;
         if (!chat)
             for (const ModelChoice &m : models)
-                if (m.provider != QLatin1String("opencode") && m.provider != QLatin1String("orbital-web"))
+                if (m.provider != QLatin1String("opencode") && m.provider != QLatin1String("orbital-web")
+                    && m.provider != QLatin1String("orbital"))
                     ordered << m;
         for (const ModelChoice &m : std::as_const(ordered)) {
             bool free = false;
@@ -2494,7 +2511,7 @@ void AppController::accountSignOut()
 QString AppController::appVersion() const
 {
     const QString ver = QCoreApplication::applicationVersion();
-    return ver.isEmpty() ? QStringLiteral("0.5.1") : ver;
+    return ver.isEmpty() ? QStringLiteral("0.5.2") : ver;
 }
 
 void AppController::checkForUpdates(bool silent)

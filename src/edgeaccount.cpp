@@ -54,6 +54,46 @@ QString EdgeAccount::token()
     return stored().value(QStringLiteral("token")).toString();
 }
 
+bool EdgeAccount::developer()
+{
+    return !token().isEmpty() && stored().value(QStringLiteral("developer")).toBool();
+}
+
+int EdgeAccount::orbitalLevel()
+{
+    return token().isEmpty() ? 1 : qMax(1, stored().value(QStringLiteral("orbital")).toInt(1));
+}
+
+void EdgeAccount::refreshEntitlements()
+{
+    const QString t = token();
+    if (t.isEmpty())
+        return;
+    QNetworkRequest req(QUrl(cloudUrl() + QStringLiteral("/api/ben")));
+    req.setRawHeader("Authorization", "Bearer " + t.toUtf8());
+    req.setTransferTimeout(15000);
+    QNetworkReply *reply = m_nam->get(req);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, t] {
+        reply->deleteLater();
+        const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        if (status != 200 || token() != t)
+            return;
+        const QJsonObject o = QJsonDocument::fromJson(reply->readAll()).object();
+        QJsonObject s = Paths::loadSettings();
+        QJsonObject acc = s.value(QStringLiteral("edgeAccount")).toObject();
+        const bool dev = o.value(QStringLiteral("gelistirici")).toBool();
+        const int level = qMax(1, o.value(QStringLiteral("orbital")).toInt(1));
+        if (acc.value(QStringLiteral("developer")).toBool() == dev && acc.value(QStringLiteral("orbital")).toInt(1) == level
+            && acc.contains(QStringLiteral("developer")))
+            return;
+        acc.insert(QStringLiteral("developer"), dev);
+        acc.insert(QStringLiteral("orbital"), level);
+        s.insert(QStringLiteral("edgeAccount"), acc);
+        Paths::saveSettings(s);
+        Q_EMIT entitlementsChanged();
+    });
+}
+
 QString EdgeAccount::email() const
 {
     return stored().value(QStringLiteral("email")).toString();
@@ -214,6 +254,7 @@ void EdgeAccount::openCloudSession(const QString &accessToken)
         reset();
         Q_EMIT changed();
         Q_EMIT finished(true, tr("EdgeAccount ile giriş yapıldı: %1").arg(email()));
+        refreshEntitlements();
     });
 }
 
@@ -229,9 +270,13 @@ void EdgeAccount::signOut()
         connect(reply, &QNetworkReply::finished, reply, &QObject::deleteLater);
     }
     QJsonObject s = Paths::loadSettings();
+    const bool hadExtras = s.value(QStringLiteral("edgeAccount")).toObject().value(QStringLiteral("developer")).toBool()
+                           || s.value(QStringLiteral("edgeAccount")).toObject().value(QStringLiteral("orbital")).toInt(1) > 1;
     s.remove(QStringLiteral("edgeAccount"));
     Paths::saveSettings(s);
     Q_EMIT changed();
+    if (hadExtras)
+        Q_EMIT entitlementsChanged();
 }
 
 void EdgeAccount::cancel()
