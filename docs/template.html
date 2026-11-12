@@ -1,421 +1,348 @@
-<!doctype html>
-<html lang="tr">
+<!DOCTYPE html>
+<html lang="tr" class="antialiased scroll-smooth">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#080b12">
-<title>Orbital — Sade ve güçlü AI kod asistanı</title>
-<meta name="description" content="Orbital: skill ve eklenti destekli, EdgeAccount ile anahtarsız bulut modelleri sunan masaüstü AI kod asistanı.">
-<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
-<style>
-  :root {
-    color-scheme: dark;
-    --bg: #080b12; --card: #121723; --border: #273043; --border-hi: #3e4b64;
-    --text: #eef2ff; --muted: #99a7bf; --faint: #7f8da8;
-    --blue: #75a7ff; --violet: #a99bff; --term: #0b0e16;
-    --mono: ui-monospace, SFMono-Regular, "JetBrains Mono", Consolas, monospace;
-  }
-  * { box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
-  body {
-    margin: 0; color: var(--text);
-    background: radial-gradient(ellipse 70% 35% at 50% 0%, #1f2550 0%, transparent 85%), var(--bg);
-    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
-    -webkit-font-smoothing: antialiased;
-  }
-  a { color: inherit; text-decoration: none; }
-  a:focus-visible, button:focus-visible { outline: 2px solid var(--blue); outline-offset: 5px; border-radius: 4px; }
-  img { max-width: 100%; height: auto; display: block; }
-  code { font-family: var(--mono); font-size: .92em; color: #c9d8ff; }
-  .wrap { width: min(1080px, calc(100% - 32px)); margin: auto; }
-
-  /* nav */
-  nav { height: 80px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
-  .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: -.06em; font-size: 24px; }
-  .brand img { width: 30px; height: 30px; }
-  .brand b { color: var(--blue); }
-  .links { display: flex; gap: 28px; color: var(--muted); font-size: 14px; }
-  nav a:hover, footer a:hover { color: var(--blue); }
-
-  /* hero */
-  .hero { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(250px, .75fr); align-items: center;
-          gap: 32px; min-height: 620px; padding: 70px 0 100px; }
-  .hero-copy { min-width: 0; }
-  .eyebrow { text-transform: uppercase; letter-spacing: .17em; color: var(--blue); font-weight: 700; font-size: 12px; }
-  .hero h1 { font-size: clamp(44px, 6.1vw, 80px); letter-spacing: -.075em; line-height: 1.07; margin: 17px 0 23px; max-width: 760px; }
-  .hero h1 em { font-style: normal; background: linear-gradient(95deg, #accfff, #b3a2ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  .hero p { color: var(--muted); font-size: clamp(17px, 2vw, 20px); max-width: 610px; margin: 0 0 34px; }
-  .buttons { display: flex; gap: 14px; flex-wrap: wrap; }
-  .button { display: inline-flex; align-items: center; gap: 8px; padding: 12px 21px; border: 1px solid var(--border-hi);
-            border-radius: 13px; font-size: 14px; font-weight: 600; transition: transform .2s, background .2s; }
-  .button:hover { transform: translateY(-2px); background: #1a2539; }
-  .button.primary { color: #081120; background: #c4dbff; border-color: #c4dbff; }
-  .button.primary:hover { background: #fff; }
-  .button svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-  .micro-note { margin: 18px 0 0 !important; font-size: 13px !important; color: var(--faint) !important; }
-  .micro-note a { color: #a9c4f0; text-decoration: underline; text-underline-offset: 3px; }
-  .micro-note a:hover { color: var(--blue); }
-
-  .hero-art { width: 100%; min-width: 0; }
-  .arch { position: relative; overflow: hidden; border-radius: 160px 160px 22px 22px; border: 1px solid #445675;
-          background: radial-gradient(ellipse at 50% 38%, #2b3155, #121926 75%); box-shadow: 0 22px 80px #0006; }
-  .arch::after { content: ""; position: absolute; inset: 12px; border: 1px solid #fff2; border-radius: 150px 150px 12px 12px; pointer-events: none; }
-  .arch svg { width: 100%; display: block; }
-  .arch .ring { transform-origin: 170px 190px; animation: drift 40s linear infinite; }
-  @keyframes drift { to { transform: rotate(360deg); } }
-  .art-caption { text-align: center; color: #8493ae; font: 10px var(--mono); letter-spacing: .12em; text-transform: uppercase; margin-top: 14px; }
-
-  /* sections */
-  section { padding: 34px 0 80px; }
-  .section-title { display: flex; align-items: baseline; justify-content: space-between; gap: 20px; margin-bottom: 24px; }
-  h2 { font-size: clamp(28px, 4vw, 40px); letter-spacing: -.055em; margin: 0; }
-  .section-title small { color: var(--muted); font-size: 14px; }
-
-  .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-  .card { display: flex; flex-direction: column; min-height: 230px; padding: 27px; border: 1px solid var(--border);
-          border-radius: 22px; background: linear-gradient(140deg, #192337, #10151e 70%); transition: transform .2s, border-color .2s; }
-  .card:hover { transform: translateY(-5px); border-color: #6288be; }
-  .symbol { font-family: var(--mono); color: #9fc4ff; font-size: 30px; line-height: 1; }
-  .card h3 { font-size: 22px; letter-spacing: -.04em; margin: 26px 0 6px; }
-  .card p { color: var(--muted); font-size: 14px; margin: 0; }
-  .card .tag { margin-top: auto; padding-top: 18px; color: var(--blue); font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
-
-  /* screenshots */
-  .shots { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; }
-  .shots figure { margin: 0; border: 1px solid var(--border); border-radius: 22px; overflow: hidden; background: var(--card); }
-  .shots figure:first-child { grid-row: span 2; }
-  .shots img { width: 100%; height: 100%; object-fit: cover; object-position: top left; }
-  .shots figcaption { padding: 12px 18px; color: var(--muted); font: 12px var(--mono); border-top: 1px solid var(--border); }
-
-  /* store */
-  .filters { display: flex; gap: 8px; flex-wrap: wrap; }
-  .filters button { font: 600 13px/1 inherit; font-family: inherit; padding: 9px 15px; border-radius: 999px; cursor: pointer;
-                    border: 1px solid var(--border); background: transparent; color: var(--muted); transition: .15s; }
-  .filters button:hover { color: var(--text); border-color: var(--border-hi); }
-  .filters button.on { background: #c4dbff; color: #081120; border-color: #c4dbff; }
-  .store { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
-  .store-card { display: grid; grid-template-columns: 38px 1fr; column-gap: 12px; row-gap: 10px; align-content: start; padding: 18px;
-                border: 1px solid var(--border); border-radius: 18px; background: linear-gradient(140deg, #161e2f, #10151e 75%);
-                transition: border-color .2s; }
-  .store-card:hover { border-color: #4d6a96; }
-  .store-card[hidden] { display: none; }
-  .store-icon { width: 38px; height: 38px; border-radius: 11px; background: #1c2840; display: grid; place-items: center; }
-  .store-card[data-type="plugin"] .store-icon { background: #241f44; }
-  .store-icon svg { width: 19px; height: 19px; fill: none; stroke: #9fc4ff; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-  .store-card[data-type="plugin"] .store-icon svg { stroke: var(--violet); }
-  .store-card h4 { margin: 0; font-size: 15px; letter-spacing: -.02em; }
-  .store-card .meta { margin: 0; color: var(--faint); font: 11px var(--mono); }
-  .store-card .desc { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 13.5px; }
-  .tags { grid-column: 1 / -1; display: flex; gap: 6px; flex-wrap: wrap; }
-  .store-card .tag { font: 11px var(--mono); padding: 2px 9px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
-
-  /* terminal */
-  .terminal { border: 1px solid var(--border); border-radius: 19px; overflow: hidden; background: var(--term); box-shadow: 0 24px 80px #0005; }
-  .terminal-head { border-bottom: 1px solid var(--border); padding: 13px 17px; background: #151b28; display: flex; align-items: center; gap: 7px; }
-  .dot { height: 10px; width: 10px; border-radius: 50%; background: #ff625a; }
-  .dot:nth-child(2) { background: #ffbd2e; }
-  .dot:nth-child(3) { background: #28c840; }
-  .terminal-head span { color: var(--muted); margin: auto; font: 12px var(--mono); transform: translateX(-22px); }
-  pre { padding: 24px; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.95 var(--mono); color: #d1def7; }
-  .prompt { color: #80b5ff; }
-  .output { color: #98aac9; }
-  .ok { color: #7fd1a0; }
-  .cursor { animation: blink 1.1s steps(1) infinite; }
-  @keyframes blink { 50% { opacity: 0; } }
-
-  /* download */
-  .downloads .card { min-height: 0; }
-  .downloads pre { padding: 10px 12px; margin-top: 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--term);
-                   font-size: 12.5px; line-height: 1.6; white-space: pre; overflow-x: auto; }
-  .downloads .button { margin-top: auto; justify-content: center; }
-  .downloads .card > :nth-last-child(2) { margin-bottom: 22px; }
-  .downloads .alt-dl { margin-top: 10px; justify-content: center; }
-  .downloads .card > .button.primary:has(+ .alt-dl) { margin-bottom: 0; }
-  .downloads .hint { margin-top: 10px; font-size: 12.5px; color: var(--faint); }
-
-  /* system check */
-  .check { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 16px; align-items: stretch; }
-  .verdict { min-height: 0; }
-  .verdict .symbol { font-size: 34px; }
-  .verdict.ok .symbol { color: #7fd1a0; }
-  .verdict.warn .symbol { color: #ffcf70; }
-  .verdict.no .symbol { color: #ff8a80; }
-  .verdict h3 { font-size: 26px; }
-  .verdict .detected { margin-top: 10px; font: 12px var(--mono); color: var(--faint); }
-  .verdict .button { margin-top: auto; align-self: flex-start; }
-  .verdict p + .detected + .button { margin-top: 24px; }
-  .checklist { list-style: none; margin: 0; padding: 18px 22px; font: 13.5px/1.6 var(--mono); }
-  .checklist li { display: grid; grid-template-columns: 18px 128px 1fr; gap: 10px; padding: 7px 0; border-bottom: 1px dashed #1e2638; }
-  .checklist li:last-child { border-bottom: 0; }
-  .checklist .st { font-weight: 700; }
-  .checklist .ok { color: #7fd1a0; } .checklist .warn { color: #ffcf70; } .checklist .no { color: #ff8a80; } .checklist .info { color: var(--faint); }
-  .checklist .k { color: #d1def7; }
-  .checklist .v { color: #98aac9; }
-  .downloads .card.match { border-color: #6288be; box-shadow: 0 0 0 1px #6288be55, 0 18px 60px #0b1a3a; }
-  .downloads .card .yours { display: none; margin-left: 8px; font: 700 10px var(--mono); letter-spacing: .1em; color: #081120;
-                            background: #c4dbff; padding: 3px 7px; border-radius: 6px; vertical-align: middle; }
-  .downloads .card.match .yours { display: inline-block; }
-
-  .note { margin-top: 26px; padding: 18px 22px; border-radius: 16px; border: 1px solid var(--border); color: var(--muted); font-size: 14px; }
-  .note strong { color: var(--text); }
-  .note a, .build-note a { text-decoration: underline; text-underline-offset: 3px; }
-  .build-note { color: var(--muted); font-size: 14px; margin: 22px 0 0; }
-
-  footer { border-top: 1px solid var(--border); margin-top: 30px; padding: 32px 0 48px; display: flex; flex-wrap: wrap;
-           justify-content: space-between; gap: 12px; color: var(--muted); font-size: 13px; }
-
-  @media (max-width: 850px) {
-    .hero { grid-template-columns: 1fr; padding-top: 40px; gap: 40px; min-height: 0; }
-    .hero-art { max-width: 310px; justify-self: center; }
-    .grid { grid-template-columns: 1fr; }
-    .card { min-height: 0; }
-    .shots { grid-template-columns: 1fr; }
-    .check { grid-template-columns: 1fr; }
-    .shots figure:first-child { grid-row: auto; }
-  }
-  @media (max-width: 640px) {
-    nav { height: 68px; }
-    .links { gap: 14px; }
-    .links .wide { display: none; }
-    .section-title { flex-direction: column; align-items: flex-start; gap: 6px; }
-    .hero-art { max-width: 250px; }
-    .checklist li { grid-template-columns: 16px 1fr; }
-    .checklist .v { grid-column: 2; margin-top: -6px; }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    html { scroll-behavior: auto; }
-    *, *::before, *::after { transition: none !important; animation: none !important; }
-  }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Orbital · Projenin içinde çalışan AI kod asistanı</title>
+  <meta name="description" content="Orbital: dosyaları okuyan, düzenleyen ve komut çalıştıran açık kaynak masaüstü AI kod asistanı. Anahtarsız ücretsiz modeller; geliştiricilere ORBITAL Code günlük kotasız.">
+  <meta name="theme-color" content="#2563eb">
+  <meta property="og:title" content="Orbital · Projenin içinde çalışan AI kod asistanı">
+  <meta property="og:description" content="Açık kaynak masaüstü AI kod asistanı. Geliştiricilere ORBITAL Code günlük kotasız.">
+  <meta property="og:image" content="https://kefy266.github.io/orbital/assets/ekran-acik-sohbet.png">
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com/3.4.16?plugins=forms"></script>
+  <script>
+    tailwind.config = { theme: { extend: { fontFamily: {
+      sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+      mono: ['JetBrains Mono', 'ui-monospace', 'monospace'] } } } };
+  </script>
+  <style type="text/tailwindcss">
+    @layer components {
+      .btn { @apply inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-40; }
+      .btn-ana { @apply bg-blue-600 text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600; }
+      .btn-koyu { @apply bg-slate-900 text-white shadow-sm hover:bg-slate-700; }
+      .btn-ikinci { @apply bg-white text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50; }
+      .kutu { @apply rounded-2xl bg-white shadow-sm ring-1 ring-slate-200; }
+      .ton { @apply grid shrink-0 place-items-center rounded-xl ring-1 ring-inset; }
+      .arac-kart { @apply relative flex flex-col rounded-2xl bg-white p-5 ring-1 ring-slate-200 transition hover:shadow-lg hover:shadow-slate-900/5 hover:ring-slate-300; }
+      .bolum-ust { @apply text-sm font-semibold text-blue-600; }
+      .bolum-baslik { @apply mt-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl; }
+      .sekme { @apply rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:text-slate-900; }
+      .sekme[aria-selected="true"] { @apply bg-white text-slate-900 shadow-sm ring-1 ring-slate-200; }
+      .cip { @apply inline-flex items-center rounded-md px-2 py-1 font-mono text-[11px] font-medium uppercase ring-1 ring-inset; }
+      .hizli { @apply inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[13px] font-medium text-slate-700 ring-1 ring-slate-200 transition hover:text-blue-700 hover:ring-blue-300; }
+      .menu-baglanti { @apply rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition hover:text-slate-900; }
+    }
+    .izgara-arka {
+      background-image: linear-gradient(to right, rgb(15 23 42 / .045) 1px, transparent 1px), linear-gradient(to bottom, rgb(15 23 42 / .045) 1px, transparent 1px);
+      background-size: 44px 44px;
+      -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, #000 40%, transparent 100%);
+      mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, #000 40%, transparent 100%);
+    }
+    details > summary { list-style: none; }
+    details > summary::-webkit-details-marker { display: none; }
+    details[open] .acik-ok { transform: rotate(45deg); }
+    .indir-kart.senin { box-shadow: 0 0 0 2px #2563eb; }
+    .indir-kart .senin-rozet { display: none; }
+    .indir-kart.senin .senin-rozet { display: inline-flex; }
+    .imlec { animation: yanip 1.1s steps(1) infinite; }
+    @keyframes yanip { 50% { opacity: 0; } }
+    @media (prefers-reduced-motion: reduce) { .imlec { animation: none; } html { scroll-behavior: auto; } }
+  </style>
 </head>
-<body>
-<div class="wrap">
-  <nav aria-label="Ana menü">
-    <a class="brand" href="#"><img src="assets/logo.svg" alt=""><span class="word">orbital<b>.</b></span></a>
-    <div class="links">
-      <a class="wide" href="#ozellikler">Özellikler</a>
-      <a class="wide" href="#magaza">Mağaza</a>
-      <a href="#indir">İndir</a>
-      <a href="https://github.com/kefy266/orbital" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
-    </div>
-  </nav>
+<body class="bg-white text-slate-600">
+  <a href="#icerik" class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-white focus:px-3 focus:py-2 focus:text-sm focus:font-semibold focus:text-slate-900 focus:ring-2 focus:ring-blue-600">İçeriğe geç</a>
 
-  <main>
-    <header class="hero">
-      <div class="hero-copy">
-        <span class="eyebrow">AI kod asistanı / Skill'ler / Eklentiler</span>
-        <h1>Projenin etrafında<br><em>dönen bir ajan.</em></h1>
-        <p>Orbital projenin içinde çalışır: dosyaları okur, düzenler, komut çalıştırır. Skill'lerle yeni işler öğrenir, eklentilerle büyür. Kurduğun anda anahtarsız modellerle başla.</p>
-        <div class="buttons">
-          <a class="button primary" href="#indir">
-            <svg viewBox="0 0 24 24"><path d="M12 4v11M7 10.5 12 15.5l5-5M5 20h14"/></svg>Ücretsiz indir
-          </a>
-          <a class="button" href="https://github.com/kefy266/orbital" target="_blank" rel="noopener noreferrer">Kaynak kodu ↗</a>
-        </div>
-        <p class="micro-note">Doğrudan indir:
-          <a href="https://github.com/kefy266/orbital/releases/latest/download/Orbital-windows-x64.zip">Windows</a> ·
-          <a href="https://github.com/kefy266/orbital/releases/latest/download/Orbital-macos-arm64.dmg">macOS</a> ·
-          <a href="https://github.com/kefy266/orbital/releases/latest/download/Orbital-x86_64.AppImage">Linux</a> ·
-          <a href="https://github.com/kefy266/orbital/releases/latest/download/Orbital-linux-amd64.deb">.deb</a>
-        </p>
+  <header class="sticky top-0 z-30 border-b border-slate-200/80 bg-white/80 backdrop-blur-lg">
+    <nav class="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8" aria-label="Ana menü">
+      <a href="#" class="flex items-center gap-2 text-[17px] font-bold tracking-tight text-slate-900"><img src="assets/logo.svg" alt="" class="h-7 w-7 rounded-lg">Orbital</a>
+      <div class="hidden items-center gap-1 md:flex">
+        <a class="menu-baglanti" href="#ozellikler">Özellikler</a>
+        <a class="menu-baglanti" href="#orbital-code">ORBITAL Code</a>
+        <a class="menu-baglanti" href="#magaza">Mağaza</a>
+        <a class="menu-baglanti" href="#sss">SSS</a>
+        <a class="menu-baglanti" href="https://github.com/kefy266/orbital" target="_blank" rel="noopener noreferrer">GitHub</a>
       </div>
-      <div class="hero-art">
-        <div class="arch" role="img" aria-label="Halkalı bir gezegen ve yörüngesinde dönen küçük uydular">
-          <svg viewBox="0 0 340 410" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <defs>
-              <pattern id="etch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(35)">
-                <path d="M0 0V7" stroke="#aab8ce" stroke-width=".5" opacity=".22"/>
-              </pattern>
-              <radialGradient id="planet" cx=".35" cy=".3" r=".85">
-                <stop offset="0" stop-color="#ffffff"/><stop offset=".45" stop-color="#d9d2ff"/><stop offset="1" stop-color="#6f63c9"/>
-              </radialGradient>
-            </defs>
-            <g fill="#c9d6ee">
-              <circle cx="52" cy="92" r="1.2"/><circle cx="98" cy="58" r=".9"/><circle cx="262" cy="70" r="1.3"/><circle cx="292" cy="128" r=".8"/>
-              <circle cx="40" cy="190" r=".9"/><circle cx="300" cy="232" r="1.1"/><circle cx="74" cy="268" r=".8"/><circle cx="210" cy="44" r=".9"/>
-              <circle cx="150" cy="70" r=".7"/><circle cx="272" cy="286" r=".7"/>
-            </g>
-            <path d="M0 348Q70 330 150 346T340 340V410H0Z" fill="url(#etch)"/>
-            <g class="ring">
-              <ellipse cx="170" cy="190" rx="132" ry="46" fill="none" stroke="#5b6d92" stroke-width="1" stroke-dasharray="3 6" transform="rotate(-22 170 190)"/>
-              <circle cx="292" cy="140" r="6" fill="#fde68a"/>
-              <circle cx="52" cy="238" r="4" fill="#9fc4ff"/>
-            </g>
-            <circle cx="170" cy="190" r="56" fill="url(#planet)"/>
-            <g fill="none" stroke="#fff" stroke-opacity=".18" stroke-width="1">
-              <path d="M124 170q46 12 92-4M118 196q52 14 104-4M126 220q44 10 88-4"/>
-            </g>
-            <ellipse cx="170" cy="190" rx="96" ry="28" fill="none" stroke="#eef2ff" stroke-opacity=".92" stroke-width="7"
-                     stroke-linecap="round" stroke-dasharray="250 40" transform="rotate(-22 170 190)"/>
-            <g font-family="ui-monospace,monospace" font-size="9" fill="#8fa9d1" opacity=".8">
-              <text x="60" y="300">read()</text><text x="226" y="292">edit()</text><text x="140" y="322">bash()</text>
-            </g>
-            <text x="170" y="391" text-anchor="middle" font-size="11" letter-spacing="2" font-family="Georgia,serif" fill="#b5c2d5">FİKİR DÖNER. KOD YAZILIR.</text>
-          </svg>
-        </div>
-        <div class="art-caption">Açık kaynak · Windows · macOS · Linux</div>
-      </div>
-    </header>
+      <a href="#indir" class="btn btn-koyu">İndir</a>
+    </nav>
+  </header>
 
-    <section id="ozellikler">
-      <div class="section-title">
-        <h2>İhtiyacın olan her şey.</h2>
-        <small>Fazlası değil.</small>
-      </div>
-      <div class="grid">
-        <article class="card">
-          <div class="symbol">◎</div>
-          <h3>Ücretsiz modeller</h3>
-          <p>Ücretsiz ORBITAL modelleri (DeepSeek, GLM, MiniMax…) hesap ya da API anahtarı olmadan, doğrudan bilgisayarından.</p>
-          <span class="tag">Ücretsiz</span>
-        </article>
-        <article class="card">
-          <div class="symbol">⌘</div>
-          <h3>Kendi sağlayıcın</h3>
-          <p>OpenAI, Anthropic, Gemini, OpenRouter, DeepSeek, Groq, Mistral, xAI: anahtarını yapıştır, modeller menüne gelsin.</p>
-          <span class="tag">API anahtarı</span>
-        </article>
-        <article class="card">
-          <div class="symbol">&gt;_</div>
-          <h3>Gerçek bir ajan</h3>
-          <p>Dosya okur, yazar, düzenler, arar ve komut çalıştırır. Riskli adımlardan önce iznini ister.</p>
-          <span class="tag">İzin kontrollü</span>
-        </article>
-        <article class="card">
-          <div class="symbol">✦</div>
-          <h3>Skill'ler</h3>
-          <p>Modele belirli işleri öğreten talimat paketleri. Mağazadan ya da doğrudan GitHub adresinden yükle.</p>
-          <span class="tag">SKILL.md</span>
-        </article>
-        <article class="card">
-          <div class="symbol">⧉</div>
-          <h3>Eklentiler</h3>
-          <p>Tek bir <code>plugin.json</code> ile slash komutları, MCP araçları, betikler, talimatlar ve izinler.</p>
-          <span class="tag">plugin.json</span>
-        </article>
-        <article class="card">
-          <div class="symbol">⚡</div>
-          <h3>Oto-mod</h3>
-          <p>İstersen izin ve soru beklemeden işi baştan sona kendisi bitirir. Tek tıkla aç, tek tıkla kapat.</p>
-          <span class="tag">Tam otonom</span>
-        </article>
+  <main id="icerik">
+    <!-- Hero -->
+    <section class="relative isolate overflow-hidden">
+      <div class="izgara-arka absolute inset-0 -z-10" aria-hidden="true"></div>
+      <div class="absolute left-1/2 top-0 -z-10 h-[420px] w-[820px] max-w-full -translate-x-1/2 rounded-full bg-gradient-to-b from-blue-100/70 to-transparent blur-3xl" aria-hidden="true"></div>
+      <div class="mx-auto max-w-6xl px-4 pb-16 pt-16 text-center sm:px-6 sm:pt-20">
+        <a href="#orbital-code" class="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:ring-blue-300">
+          <span class="rounded-full bg-blue-600 px-1.5 py-px text-[10px] font-bold uppercase tracking-wide text-white">Yeni</span>Geliştiricilere ORBITAL Code günlük kotasız<span aria-hidden="true">→</span></a>
+        <h1 class="mx-auto mt-6 max-w-3xl text-4xl font-extrabold tracking-tight text-slate-900 sm:text-[3.4rem] sm:leading-[1.08]">Projenin içinde çalışan AI kod asistanı</h1>
+        <p class="mx-auto mt-5 max-w-2xl text-lg leading-8">Orbital dosyalarını okur, düzenler, komut çalıştırır ve testleri yeşile çevirir. Skill'lerle yeni işler öğrenir, eklentilerle büyür. Kurduğun anda anahtarsız modellerle başla.</p>
+        <div class="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <a class="btn btn-ana px-5 py-2.5 text-[15px]" href="#indir">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14"/></svg>Ücretsiz indir</a>
+          <a class="btn btn-ikinci px-5 py-2.5 text-[15px]" href="https://github.com/kefy266/orbital" target="_blank" rel="noopener noreferrer">Kaynak kodu</a>
+        </div>
+        <p class="mt-4 text-sm text-slate-500">Windows · macOS (Apple Silicon) · Linux &nbsp;·&nbsp; açık kaynak, MIT lisanslı</p>
+
+        <div class="mt-12 rounded-[1.35rem] bg-white p-2 shadow-2xl shadow-slate-900/10 ring-1 ring-slate-200">
+          <img src="assets/ekran-acik-sohbet.png" alt="Orbital Kod modu: sepet-api projesinde kuruş hatası bulunup düzeltiliyor, testler geçiyor" width="1320" height="860" class="w-full rounded-2xl ring-1 ring-slate-200">
+        </div>
       </div>
     </section>
 
-    <section id="ekranlar">
-      <div class="section-title">
-        <h2>Sakin bir arayüz.</h2>
-        <small>Sistem temanı izler: açık ya da koyu.</small>
-      </div>
-      <div class="shots">
-        <figure><img src="assets/welcome-dark.png" alt="Karşılama ekranı, koyu tema" width="1320" height="860"><figcaption>karşılama · koyu tema</figcaption></figure>
-        <figure><img src="assets/chat.png" alt="Orbital sohbet ekranı: Python kodu ve açıklaması" loading="lazy" width="1320" height="860"><figcaption>sohbet · açık tema</figcaption></figure>
-        <figure><img src="assets/store-dark.png" alt="Skill ve eklenti mağazası" loading="lazy" width="1320" height="860"><figcaption>mağaza · tek tıkla yükle</figcaption></figure>
+    <!-- Güven satırı -->
+    <section class="border-y border-slate-200 bg-slate-50">
+      <div class="mx-auto grid max-w-7xl grid-cols-2 gap-6 px-4 py-8 text-center sm:grid-cols-4 sm:px-6 lg:px-8">
+        <div><p class="text-2xl font-bold tracking-tight text-slate-900">Anahtarsız</p><p class="mt-1 text-sm">ücretsiz modellerle başla</p></div>
+        <div><p class="text-2xl font-bold tracking-tight text-slate-900">{{STORE_COUNT}}</p><p class="mt-1 text-sm">skill ve eklenti</p></div>
+        <div><p class="text-2xl font-bold tracking-tight text-slate-900">3 sistem</p><p class="mt-1 text-sm">Windows, macOS, Linux</p></div>
+        <div><p class="text-2xl font-bold tracking-tight text-slate-900">MIT</p><p class="mt-1 text-sm">açık kaynak</p></div>
       </div>
     </section>
 
-    <section id="magaza">
-      <div class="section-title">
-        <h2>{{STORE_COUNT}} skill ve eklenti.</h2>
-        <div class="filters" role="tablist" aria-label="Mağaza filtresi">
-          <button class="on" data-filter="all">Tümü</button>
-          <button data-filter="skill">Skill'ler</button>
-          <button data-filter="plugin">Eklentiler</button>
+    <!-- Özellikler -->
+    <section id="ozellikler" class="scroll-mt-20 py-20 sm:py-24">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <p class="bolum-ust">Özellikler</p>
+        <h2 class="bolum-baslik">İhtiyacın olan her şey, fazlası değil</h2>
+        <div class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div class="arac-kart">
+            <span class="ton h-11 w-11 bg-emerald-50 text-emerald-600 ring-emerald-100"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path stroke-linecap="round" d="M9 12.5l2 2 4-4.5"/></svg></span>
+            <h3 class="mt-5 font-semibold text-slate-900">Ücretsiz modeller</h3>
+            <p class="mt-1.5 text-sm leading-6 text-slate-500">ORBITAL modelleri (DeepSeek, GLM, MiniMax…) hesap ya da API anahtarı olmadan, doğrudan bilgisayarından.</p>
+          </div>
+          <div class="arac-kart">
+            <span class="ton h-11 w-11 bg-blue-50 text-blue-600 ring-blue-100"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m8 7-5 5 5 5M16 7l5 5-5 5"/></svg></span>
+            <h3 class="mt-5 font-semibold text-slate-900">Gerçek bir ajan</h3>
+            <p class="mt-1.5 text-sm leading-6 text-slate-500">Dosya okur, yazar, düzenler, arar ve komut çalıştırır. Riskli adımlardan önce iznini ister.</p>
+          </div>
+          <div class="arac-kart">
+            <span class="ton h-11 w-11 bg-amber-50 text-amber-600 ring-amber-100"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true"><path stroke-linejoin="round" d="M12 3.5c.6 4.4 2.4 6.3 7 7-4.6.7-6.4 2.6-7 7-.6-4.4-2.4-6.3-7-7 4.6-.7 6.4-2.6 7-7z"/></svg></span>
+            <h3 class="mt-5 font-semibold text-slate-900">Skill'ler</h3>
+            <p class="mt-1.5 text-sm leading-6 text-slate-500">Modele belirli işleri öğreten talimat paketleri. Mağazadan ya da doğrudan GitHub adresinden yükle.</p>
+          </div>
+          <div class="arac-kart">
+            <span class="ton h-11 w-11 bg-sky-50 text-sky-600 ring-sky-100"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/><path stroke-linecap="round" d="M16.5 4v6M13.5 7h6"/></svg></span>
+            <h3 class="mt-5 font-semibold text-slate-900">Eklentiler</h3>
+            <p class="mt-1.5 text-sm leading-6 text-slate-500">Tek bir <code class="font-mono text-[13px] text-slate-700">plugin.json</code> ile slash komutları, MCP araçları, betikler ve izinler.</p>
+          </div>
+          <div class="arac-kart">
+            <span class="ton h-11 w-11 bg-indigo-50 text-indigo-600 ring-indigo-100"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 7h10M4 12h16M4 17h7"/><circle cx="17" cy="7" r="2"/><circle cx="14" cy="17" r="2"/></svg></span>
+            <h3 class="mt-5 font-semibold text-slate-900">Kendi sağlayıcın</h3>
+            <p class="mt-1.5 text-sm leading-6 text-slate-500">OpenAI, Anthropic, Gemini, OpenRouter, DeepSeek, Groq, Mistral, xAI: anahtarını yapıştır, modeller menüne gelsin.</p>
+          </div>
+          <div class="arac-kart">
+            <span class="ton h-11 w-11 bg-rose-50 text-rose-600 ring-rose-100"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true"><path stroke-linejoin="round" d="M13 3 5 13.5h6L10 21l8-10.5h-6z"/></svg></span>
+            <h3 class="mt-5 font-semibold text-slate-900">Oto-mod</h3>
+            <p class="mt-1.5 text-sm leading-6 text-slate-500">İstersen izin ve soru beklemeden işi baştan sona kendisi bitirir. Tek tıkla aç, tek tıkla kapat.</p>
+          </div>
         </div>
       </div>
-      <div class="store">
+    </section>
+
+    <!-- ORBITAL Code -->
+    <section id="orbital-code" class="scroll-mt-20 border-t border-slate-200 bg-slate-50 py-20 sm:py-24">
+      <div class="mx-auto grid max-w-7xl items-center gap-12 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
+        <div>
+          <p class="bolum-ust">ORBITAL Code</p>
+          <h2 class="bolum-baslik">Geliştiricilere günlük kota yok</h2>
+          <p class="mt-4 text-lg leading-8">Ücretsiz Origin Edge geliştirici hesabınla giriş yap; Kod modunda ORBITAL Code modelleri günlük token sınırı olmadan çalışsın. Tek kural: dakikada 40 istek.</p>
+          <ol class="mt-8 space-y-4">
+            <li class="flex gap-4"><span class="ton h-8 w-8 bg-blue-50 font-mono text-sm font-semibold text-blue-600 ring-blue-100">1</span><div><p class="font-semibold text-slate-900">Geliştirici hesabını aç</p><p class="text-sm text-slate-500"><a class="font-medium text-blue-600 hover:text-blue-500" href="https://developer.oedge.xyz" target="_blank" rel="noopener">developer.oedge.xyz</a> · ücretsiz, kart bilgisi yok</p></div></li>
+            <li class="flex gap-4"><span class="ton h-8 w-8 bg-blue-50 font-mono text-sm font-semibold text-blue-600 ring-blue-100">2</span><div><p class="font-semibold text-slate-900">Orbital'de EdgeAccount ile giriş yap</p><p class="text-sm text-slate-500">Sol alttaki hesap satırından</p></div></li>
+            <li class="flex gap-4"><span class="ton h-8 w-8 bg-blue-50 font-mono text-sm font-semibold text-blue-600 ring-blue-100">3</span><div><p class="font-semibold text-slate-900">Kod modunda ORBITAL Code modelini seç</p><p class="text-sm text-slate-500">GPT-OSS 120B, Qwen 3.8 27B ya da GPT-OSS 20B</p></div></li>
+          </ol>
+          <div class="mt-8 flex flex-wrap gap-3">
+            <a class="btn btn-ana" href="https://developer.oedge.xyz" target="_blank" rel="noopener">Geliştirici hesabı aç</a>
+            <a class="btn btn-ikinci" href="#indir">Orbital'i indir</a>
+          </div>
+        </div>
+        <div class="rounded-[1.35rem] bg-white p-2 shadow-2xl shadow-slate-900/10 ring-1 ring-slate-200">
+          <img src="assets/ekran-acik-modeller.png" alt="Model seçicide ORBITAL Code · geliştirici bölümü: GPT-OSS 120B, GPT-OSS 20B, Qwen 3.8 27B" loading="lazy" width="1320" height="860" class="w-full rounded-2xl ring-1 ring-slate-200">
+        </div>
+      </div>
+    </section>
+
+    <!-- Ekranlar -->
+    <section id="ekranlar" class="scroll-mt-20 py-20 sm:py-24">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <p class="bolum-ust">Arayüz</p>
+        <h2 class="bolum-baslik">Sakin bir arayüz, açık ya da koyu</h2>
+        <p class="mt-4 max-w-2xl text-lg leading-8">Sohbet ve Kod arasında tek tıkla geç; projelerin solda, oturum bilgisi sağ panelde. Sistem temanı izler.</p>
+        <div class="mt-10 grid gap-6 md:grid-cols-2">
+          <figure class="kutu overflow-hidden p-2"><img src="assets/ekran-koyu-karsilama.png" alt="Orbital karşılama ekranı, koyu tema" loading="lazy" width="1320" height="860" class="w-full rounded-xl"><figcaption class="px-2 pb-1 pt-3 text-sm text-slate-500">Karşılama · koyu tema</figcaption></figure>
+          <figure class="kutu overflow-hidden p-2"><img src="assets/ekran-acik-magaza.png" alt="Orbital skill ve eklenti mağazası" loading="lazy" width="1320" height="860" class="w-full rounded-xl"><figcaption class="px-2 pb-1 pt-3 text-sm text-slate-500">Mağaza · tek tıkla yükle</figcaption></figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- Mağaza -->
+    <section id="magaza" class="scroll-mt-20 border-t border-slate-200 bg-slate-50 py-20 sm:py-24">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="flex flex-wrap items-end justify-between gap-6">
+          <div>
+            <p class="bolum-ust">Mağaza</p>
+            <h2 class="bolum-baslik">{{STORE_COUNT}} skill ve eklenti</h2>
+          </div>
+          <div class="inline-flex gap-1 rounded-lg bg-slate-200/60 p-1" role="tablist" aria-label="Mağaza filtresi">
+            <button class="sekme" role="tab" aria-selected="true" data-filtre="hepsi">Tümü</button>
+            <button class="sekme" role="tab" aria-selected="false" data-filtre="skill">Skill'ler</button>
+            <button class="sekme" role="tab" aria-selected="false" data-filtre="plugin">Eklentiler</button>
+          </div>
+        </div>
+        <div class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" id="magazaIzgara">
 {{STORE_CARDS}}
+        </div>
       </div>
     </section>
 
-    <section id="nasil">
-      <div class="section-title">
-        <h2>Bir dakikada başla.</h2>
-        <small>Kur, aç, sor.</small>
-      </div>
-      <div class="terminal">
-        <div class="terminal-head"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span>orbital — zsh</span></div>
-<pre><span class="prompt">~ %</span> curl -fsSL https://raw.githubusercontent.com/kefy266/orbital/main/install.sh | bash
-<span class="output">→ Orbital paketi indiriliyor...</span>
-<span class="ok">✓ Orbital başarıyla kuruldu</span>
-<span class="prompt">~ %</span> cd projem &amp;&amp; orbital
-<span class="output">✦ "testleri çalıştır, kırılanı düzelt"</span>
-<span class="output">  bash   npm test             3 başarısız</span>
-<span class="output">  edit   src/sepet.ts         +4 −2</span>
-<span class="output">  bash   npm test             </span><span class="ok">hepsi geçti</span>
-<span class="prompt">~ %</span> <span class="cursor" aria-hidden="true">▌</span></pre>
+    <!-- Kurulum -->
+    <section id="nasil" class="scroll-mt-20 py-20 sm:py-24">
+      <div class="mx-auto grid max-w-7xl items-center gap-12 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
+        <div>
+          <p class="bolum-ust">Kurulum</p>
+          <h2 class="bolum-baslik">Bir dakikada başla</h2>
+          <p class="mt-4 text-lg leading-8">Linux ve macOS'ta tek komut yeter; Windows'ta zip'i açıp çalıştır. Kurduktan sonra bir proje klasörü aç ve ne istediğini yaz.</p>
+          <div class="mt-6 flex flex-wrap gap-2"><a class="hizli" href="#indir">Windows</a><a class="hizli" href="#indir">macOS</a><a class="hizli" href="#indir">Linux</a><a class="hizli" href="https://github.com/kefy266/orbital#kaynaktan-derleme" target="_blank" rel="noopener">Kaynaktan derle</a></div>
+        </div>
+        <div class="overflow-hidden rounded-2xl bg-slate-900 shadow-2xl shadow-slate-900/20 ring-1 ring-slate-800">
+          <div class="flex items-center gap-1.5 border-b border-white/10 px-4 py-3"><i class="h-2.5 w-2.5 rounded-full bg-white/20"></i><i class="h-2.5 w-2.5 rounded-full bg-white/20"></i><i class="h-2.5 w-2.5 rounded-full bg-white/20"></i><span class="ml-2 font-mono text-xs text-slate-400">orbital · zsh</span></div>
+<pre class="overflow-x-auto p-5 font-mono text-[13px] leading-6 text-slate-300"><span class="text-slate-500">~ %</span> curl -fsSL https://raw.githubusercontent.com/kefy266/orbital/main/install.sh | bash
+<span class="text-slate-400">→ Orbital paketi indiriliyor…</span>
+<span class="text-emerald-400">✓ Orbital kuruldu</span>
+<span class="text-slate-500">~ %</span> cd sepet-api &amp;&amp; orbital
+<span class="text-sky-300">✦ "testleri çalıştır, kırılanı düzelt"</span>
+<span class="text-slate-400">  bash   npm test        3 başarısız</span>
+<span class="text-slate-400">  edit   src/sepet.ts    +4 −2</span>
+<span class="text-slate-400">  bash   npm test        </span><span class="text-emerald-400">hepsi geçti</span>
+<span class="text-slate-500">~ %</span> <span class="imlec text-slate-300" aria-hidden="true">▌</span></pre>
+        </div>
       </div>
     </section>
 
-    <section id="hazir">
-      <div class="section-title">
-        <h2>Orbital hazır. Bilgisayarın?</h2>
-        <small>Tarayıcından kontrol edildi, hiçbir şey gönderilmez.</small>
-      </div>
-      <div class="check">
-        <article class="card verdict" id="verdict">
-          <div class="symbol">…</div>
-          <h3>Kontrol ediliyor</h3>
-          <p>İşletim sistemin ve işlemcin tarayıcıdan okunuyor.</p>
-          <div class="detected"></div>
-          <a class="button primary" href="#indir" hidden>
-            <svg viewBox="0 0 24 24"><path d="M12 4v11M7 10.5 12 15.5l5-5M5 20h14"/></svg><span>İndir</span></a>
-        </article>
-        <div class="terminal">
-          <div class="terminal-head"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span>hazır mı? — sistem kontrolü</span></div>
-          <ul class="checklist" id="checklist">
-            <li><span class="st info">•</span><span class="k">Sistem</span><span class="v">kontrol ediliyor…</span></li>
+    <!-- Bilgisayarın hazır mı -->
+    <section id="hazir" class="scroll-mt-20 border-t border-slate-200 bg-slate-50 py-20 sm:py-24">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <p class="bolum-ust">Uyumluluk</p>
+        <h2 class="bolum-baslik">Bilgisayarın hazır mı?</h2>
+        <p class="mt-4 max-w-2xl text-lg leading-8">Tarayıcından kontrol edildi; hiçbir bilgi gönderilmez.</p>
+        <div class="mt-10 grid gap-6 lg:grid-cols-5">
+          <div class="kutu p-6 lg:col-span-2" id="karar">
+            <span class="ton h-11 w-11 bg-slate-50 text-lg font-bold text-slate-500 ring-slate-200" id="kararSimge">…</span>
+            <h3 class="mt-5 text-lg font-semibold text-slate-900" id="kararBaslik">Kontrol ediliyor</h3>
+            <p class="mt-1.5 text-sm leading-6 text-slate-500" id="kararMetin">İşletim sistemin ve işlemcin tarayıcıdan okunuyor.</p>
+            <p class="mt-3 font-mono text-xs text-slate-400" id="kararAlgilanan"></p>
+            <a class="btn btn-ana mt-5" id="kararIndir" href="#indir" hidden>
+              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14"/></svg><span>İndir</span></a>
+          </div>
+          <ul class="kutu divide-y divide-slate-100 lg:col-span-3" id="kontrolListesi">
+            <li class="flex items-center gap-3 px-5 py-3.5 text-sm"><span class="text-slate-400">•</span><span class="w-28 font-medium text-slate-900">Sistem</span><span>kontrol ediliyor…</span></li>
           </ul>
         </div>
+        <noscript><p class="mt-6 text-sm">Gereksinimler: Windows 10/11 (64 bit) · macOS 12+ ve Apple Silicon (M1 ve sonrası) · Linux x86_64 (Ubuntu 22.04+ ve benzerleri) · internet bağlantısı.</p></noscript>
       </div>
-      <noscript><p class="build-note">Gereksinimler: Windows 10/11 (64 bit) · macOS 12+ ve Apple Silicon (M1 ve sonrası) · Linux x86_64 (Ubuntu 22.04+ ve benzerleri) · internet bağlantısı.</p></noscript>
     </section>
 
-    <section id="indir">
-      <div class="section-title">
-        <h2>İndir.</h2>
-        <small>Windows, macOS ve Linux. Ücretsiz ve açık kaynak.</small>
+    <!-- İndir -->
+    <section id="indir" class="scroll-mt-20 py-20 sm:py-24">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <p class="bolum-ust">İndir</p>
+        <h2 class="bolum-baslik">Windows, macOS ve Linux</h2>
+        <p class="mt-4 max-w-2xl text-lg leading-8">Ücretsiz ve açık kaynak. Uygulama kendini güncel tutar.</p>
+        <div class="mt-10 grid gap-4 lg:grid-cols-3">
+          <div class="indir-kart arac-kart" data-os="windows">
+            <div class="flex items-center justify-between"><span class="ton h-11 w-11 bg-sky-50 text-sky-600 ring-sky-100"><svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 5.5 10.5 4.5v7H3zM11.5 4.4 21 3v8.5h-9.5zM3 12.5h7.5v7L3 18.5zM11.5 12.5H21V21l-9.5-1.4z"/></svg></span><span class="senin-rozet cip bg-blue-50 text-blue-700 ring-blue-200">Senin için</span></div>
+            <h3 class="mt-5 font-semibold text-slate-900">Windows 10/11</h3>
+            <p class="mt-1.5 text-sm leading-6 text-slate-500">Zip'i aç ve <code class="font-mono text-[13px] text-slate-700">Orbital.exe</code>'yi çalıştır. SmartScreen çıkarsa <em>Ek bilgi → Yine de çalıştır</em>.</p>
+            <a class="btn btn-ana mt-5 self-start" href="https://github.com/kefy266/orbital/releases/latest/download/Orbital-windows-x64.zip">Windows (.zip)</a>
+          </div>
+          <div class="indir-kart arac-kart" data-os="macos">
+            <div class="flex items-center justify-between"><span class="ton h-11 w-11 bg-slate-50 text-slate-700 ring-slate-200"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true"><rect x="3" y="4.5" width="18" height="12" rx="2"/><path stroke-linecap="round" d="M8 20h8M12 16.5V20"/></svg></span><span class="senin-rozet cip bg-blue-50 text-blue-700 ring-blue-200">Senin için</span></div>
+            <h3 class="mt-5 font-semibold text-slate-900">macOS · Apple Silicon</h3>
+            <p class="mt-1.5 text-sm leading-6 text-slate-500">DMG'yi aç, Orbital'i Applications'a sürükle. Ya da Homebrew ile:</p>
+            <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-900 px-3 py-2 font-mono text-[12px] text-slate-200">brew install --cask kefy266/orbital/orbital</pre>
+            <p class="mt-2 text-xs text-slate-500">"Hasarlı" uyarısı çıkarsa: <code class="font-mono">xattr -cr /Applications/Orbital.app</code></p>
+            <a class="btn btn-ana mt-5 self-start" href="https://github.com/kefy266/orbital/releases/latest/download/Orbital-macos-arm64.dmg">macOS (.dmg)</a>
+          </div>
+          <div class="indir-kart arac-kart" data-os="linux">
+            <div class="flex items-center justify-between"><span class="ton h-11 w-11 bg-amber-50 text-amber-600 ring-amber-100"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m5 8 4 4-4 4M12 17h7"/></svg></span><span class="senin-rozet cip bg-blue-50 text-blue-700 ring-blue-200">Senin için</span></div>
+            <h3 class="mt-5 font-semibold text-slate-900">Linux · x86_64</h3>
+            <p class="mt-1.5 text-sm leading-6 text-slate-500">AppImage'i indir, çalıştırma izni ver ve aç. Her şey içinde; Qt kurmaya gerek yok.</p>
+            <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-900 px-3 py-2 font-mono text-[12px] text-slate-200">chmod +x Orbital-x86_64.AppImage</pre>
+            <div class="mt-5 flex flex-wrap gap-2">
+              <a class="btn btn-ana" href="https://github.com/kefy266/orbital/releases/latest/download/Orbital-x86_64.AppImage">Linux (.AppImage)</a>
+              <a class="btn btn-ikinci" href="https://github.com/kefy266/orbital/releases/latest/download/Orbital-linux-amd64.deb">Ubuntu / Debian (.deb)</a>
+            </div>
+          </div>
+        </div>
+        <p class="mt-6 text-sm text-slate-500">Kaynaktan derlemek ya da <code class="font-mono text-[13px]">.tar.gz</code> paketini indirmek mi istiyorsun? Adımlar <a class="font-medium text-blue-600 hover:text-blue-500" href="https://github.com/kefy266/orbital#kaynaktan-derleme">README</a>'de. Her commit otomatik derlenir ve test edilir.</p>
       </div>
-      <div class="grid downloads">
-        <article class="card" data-os="windows">
-          <div class="symbol">⊞</div>
-          <h3>Windows<span class="yours">SENİN İÇİN</span></h3>
-          <p>Zip'i aç ve <code>Orbital.exe</code>'yi çalıştır. SmartScreen çıkarsa <em>Ek bilgi → Yine de çalıştır</em>.</p>
-          <a class="button primary" href="https://github.com/kefy266/orbital/releases/latest/download/Orbital-windows-x64.zip">
-            <svg viewBox="0 0 24 24"><path d="M12 4v11M7 10.5 12 15.5l5-5M5 20h14"/></svg>Windows (.zip)</a>
-        </article>
-        <article class="card" data-os="macos">
-          <div class="symbol">⌥</div>
-          <h3>macOS<span class="yours">SENİN İÇİN</span></h3>
-          <p>DMG'yi aç, Orbital'i Applications klasörüne sürükle. Ya da Homebrew ile:</p>
-          <pre>brew install --cask kefy266/orbital/orbital</pre>
-          <p class="hint">"Hasarlı" uyarısı çıkarsa: <code>xattr -cr /Applications/Orbital.app</code></p>
-          <a class="button primary" href="https://github.com/kefy266/orbital/releases/latest/download/Orbital-macos-arm64.dmg">
-            <svg viewBox="0 0 24 24"><path d="M12 4v11M7 10.5 12 15.5l5-5M5 20h14"/></svg>macOS (.dmg)</a>
-        </article>
-        <article class="card" data-os="linux">
-          <div class="symbol">$</div>
-          <h3>Linux<span class="yours">SENİN İÇİN</span></h3>
-          <p>AppImage'i indir, çalıştırma izni ver ve aç. Her şey içinde; Qt ya da başka paket kurmaya gerek yok:</p>
-          <pre>chmod +x Orbital-x86_64.AppImage</pre>
-          <a class="button primary" href="https://github.com/kefy266/orbital/releases/latest/download/Orbital-x86_64.AppImage">
-            <svg viewBox="0 0 24 24"><path d="M12 4v11M7 10.5 12 15.5l5-5M5 20h14"/></svg>Linux (.AppImage)</a>
-          <a class="button alt-dl" href="https://github.com/kefy266/orbital/releases/latest/download/Orbital-linux-amd64.deb">Ubuntu / Debian (.deb)</a>
-        </article>
+    </section>
+
+    <!-- SSS -->
+    <section id="sss" class="scroll-mt-20 border-t border-slate-200 bg-slate-50 py-20 sm:py-24">
+      <div class="mx-auto max-w-3xl px-4 sm:px-6">
+        <p class="bolum-ust">SSS</p>
+        <h2 class="bolum-baslik">Sık sorulanlar</h2>
+        <div class="kutu mt-10 divide-y divide-slate-200">
+          <details class="px-5 py-4"><summary class="flex cursor-pointer items-center justify-between gap-4 font-semibold text-slate-900">Orbital ücretli mi?<span class="acik-ok text-xl text-slate-400 transition" aria-hidden="true">+</span></summary>
+            <p class="mt-3 text-sm leading-6">Hayır. Uygulama ücretsiz ve açık kaynak. Ücretsiz ORBITAL modelleriyle hesap açmadan kullanabilirsin; kendi API anahtarını eklersen o sağlayıcının ücretlendirmesi geçerlidir.</p></details>
+          <details class="px-5 py-4"><summary class="flex cursor-pointer items-center justify-between gap-4 font-semibold text-slate-900">ORBITAL Code kimlere açık?<span class="acik-ok text-xl text-slate-400 transition" aria-hidden="true">+</span></summary>
+            <p class="mt-3 text-sm leading-6">Origin Edge geliştirici hesabı olan herkese. Hesap ücretsiz: <a class="font-medium text-blue-600 hover:text-blue-500" href="https://developer.oedge.xyz">developer.oedge.xyz</a>. Günlük token sınırı yok; sunucuyu herkes için hızlı tutmak için dakikada 40 istek sınırı var.</p></details>
+          <details class="px-5 py-4"><summary class="flex cursor-pointer items-center justify-between gap-4 font-semibold text-slate-900">Sohbet modunda hangi modelleri kullanırım?<span class="acik-ok text-xl text-slate-400 transition" aria-hidden="true">+</span></summary>
+            <p class="mt-3 text-sm leading-6">Sohbet modu ORBITAL Web modellerini kullanır: herkese ORBITAL Fast; Edge+ ve geliştirici hesaplarına Pro; Edge Pro ve Geliştirici+ sahiplerine Ultra dahil hepsi. Paketler: <a class="font-medium text-blue-600 hover:text-blue-500" href="https://hesap.oedge.xyz/abonelik">hesap.oedge.xyz/abonelik</a>.</p></details>
+          <details class="px-5 py-4"><summary class="flex cursor-pointer items-center justify-between gap-4 font-semibold text-slate-900">Kodum nereye gidiyor?<span class="acik-ok text-xl text-slate-400 transition" aria-hidden="true">+</span></summary>
+            <p class="mt-3 text-sm leading-6">Orbital bilgisayarında çalışır; dosyaların yalnızca seçtiğin modelin sağlayıcısına, sorunu çözmek için gereken kadarıyla gönderilir. Riskli komutlardan önce iznin istenir.</p></details>
+          <details class="px-5 py-4"><summary class="flex cursor-pointer items-center justify-between gap-4 font-semibold text-slate-900">Intel Mac ya da ARM Linux destekleniyor mu?<span class="acik-ok text-xl text-slate-400 transition" aria-hidden="true">+</span></summary>
+            <p class="mt-3 text-sm leading-6">Şimdilik hayır: macOS'ta Apple Silicon (M1 ve sonrası), Linux'ta x86_64 paketleri var. Kaynaktan derleyerek başka sistemlerde deneyebilirsin.</p></details>
+        </div>
       </div>
-      <p class="build-note">Kaynaktan derlemek ya da <code>.tar.gz</code> paketini indirmek mi istiyorsun? Adımlar <a href="https://github.com/kefy266/orbital#kaynaktan-derleme">README</a>'de. Her commit otomatik derlenip test edilir.</p>
+    </section>
+
+    <!-- CTA -->
+    <section class="relative isolate overflow-hidden bg-slate-900 py-20">
+      <div class="absolute left-1/2 top-0 -z-10 h-72 w-[640px] max-w-full -translate-x-1/2 rounded-full bg-blue-600/30 blur-3xl" aria-hidden="true"></div>
+      <div class="mx-auto max-w-3xl px-4 text-center sm:px-6">
+        <h2 class="text-3xl font-bold tracking-tight text-white sm:text-4xl">Projenin etrafında dönen bir ajan</h2>
+        <p class="mx-auto mt-4 max-w-xl text-lg leading-8 text-slate-300">Orbital'i indir, bir klasör aç ve ilk sorunu sor. Geliştiriciysen ORBITAL Code seni bekliyor.</p>
+        <div class="mt-8 flex flex-wrap justify-center gap-3">
+          <a class="btn btn-ana px-5 py-2.5 text-[15px]" href="#indir">Ücretsiz indir</a>
+          <a class="btn bg-white/10 px-5 py-2.5 text-[15px] text-white ring-1 ring-inset ring-white/20 hover:bg-white/20" href="https://developer.oedge.xyz" target="_blank" rel="noopener">Geliştirici hesabı aç</a>
+        </div>
+      </div>
     </section>
   </main>
 
-  <footer>
-    <span>© <span id="year">2026</span> Orbital. Açık kaynak, MIT lisanslı.</span>
-    <a href="https://github.com/kefy266/orbital" target="_blank" rel="noopener noreferrer">github.com/kefy266/orbital ↗</a>
+  <footer class="border-t border-slate-200 bg-white">
+    <div class="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
+      <div>
+        <a href="#" class="flex items-center gap-2 text-[17px] font-bold tracking-tight text-slate-900"><img src="assets/logo.svg" alt="" class="h-7 w-7 rounded-lg">Orbital</a>
+        <p class="mt-3 text-sm leading-6 text-slate-500">Projenin içinde çalışan açık kaynak AI kod asistanı. Bir Origin Edge ürünü.</p>
+      </div>
+      <div><p class="text-sm font-semibold text-slate-900">Ürün</p>
+        <ul class="mt-3 space-y-2 text-sm"><li><a class="hover:text-slate-900" href="#indir">İndir</a></li><li><a class="hover:text-slate-900" href="#magaza">Mağaza</a></li><li><a class="hover:text-slate-900" href="#orbital-code">ORBITAL Code</a></li><li><a class="hover:text-slate-900" href="https://github.com/kefy266/orbital/releases">Sürüm notları</a></li></ul></div>
+      <div><p class="text-sm font-semibold text-slate-900">Origin Edge</p>
+        <ul class="mt-3 space-y-2 text-sm"><li><a class="hover:text-slate-900" href="https://oedge.xyz">oedge.xyz</a></li><li><a class="hover:text-slate-900" href="https://developer.oedge.xyz">Geliştirici portalı</a></li><li><a class="hover:text-slate-900" href="https://yz.oedge.xyz">ORBITAL Web</a></li><li><a class="hover:text-slate-900" href="https://hesap.oedge.xyz">EdgeAccount</a></li></ul></div>
+      <div><p class="text-sm font-semibold text-slate-900">Kaynak</p>
+        <ul class="mt-3 space-y-2 text-sm"><li><a class="hover:text-slate-900" href="https://github.com/kefy266/orbital">GitHub</a></li><li><a class="hover:text-slate-900" href="https://github.com/kefy266/orbital#kaynaktan-derleme">Kaynaktan derleme</a></li><li><a class="hover:text-slate-900" href="https://github.com/kefy266/orbital/blob/main/LICENSE">MIT lisansı</a></li></ul></div>
+    </div>
+    <div class="border-t border-slate-200"><p class="mx-auto max-w-7xl px-4 py-6 text-xs text-slate-400 sm:px-6 lg:px-8">© <span id="yil">2026</span> Orbital · Origin Edge</p></div>
   </footer>
-</div>
 
 <script>
-  document.getElementById('year').textContent = new Date().getFullYear();
-  // "Bilgisayarın hazır mı?": reads OS/CPU from the browser only, nothing is sent anywhere.
+  document.getElementById('yil').textContent = new Date().getFullYear();
+
+  // Mağaza filtresi
+  document.querySelectorAll('[data-filtre]').forEach((b) => b.addEventListener('click', () => {
+    document.querySelectorAll('[data-filtre]').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
+    const f = b.dataset.filtre;
+    document.querySelectorAll('#magazaIzgara [data-tur]').forEach((k) => { k.hidden = f !== 'hepsi' && k.dataset.tur !== f; });
+  }));
+
+  // "Bilgisayarın hazır mı?": işletim sistemi ve işlemci yalnızca tarayıcıdan okunur, hiçbir yere gönderilmez.
   (async () => {
     const ua = navigator.userAgent;
     let arch = '', bitness = '', pver = '';
@@ -426,80 +353,69 @@
       }
     } catch (e) {}
     const DL = 'https://github.com/kefy266/orbital/releases/latest/download/';
-    const rows = [];
-    const row = (st, k, v) => rows.push([st, k, v]);
-    let os = '', label = 'Bilinmeyen sistem', verdict = 'warn', file = '', btn = '';
+    const satirlar = [];
+    const satir = (d, k, v) => satirlar.push([d, k, v]);
+    let os = '', etiket = 'Bilinmeyen sistem', karar = 'uyari', dosya = '', dugme = '';
 
     if (/Android|iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) {
-      label = /Android/.test(ua) ? 'Android' : 'iPhone / iPad';
-      verdict = 'no';
-      row('no', 'Sistem', label + ' · Orbital masaüstü bir uygulama');
+      etiket = /Android/.test(ua) ? 'Android' : 'iPhone / iPad';
+      karar = 'hayir';
+      satir('hayir', 'Sistem', etiket + ' · Orbital masaüstü bir uygulama');
     } else if (/Windows/.test(ua)) {
       os = 'windows';
       const nt = parseFloat((ua.match(/Windows NT ([\d.]+)/) || [])[1] || '10');
-      const win11 = parseInt(pver) >= 13;
-      label = nt < 10 ? 'Windows 8.1 veya daha eski' : win11 ? 'Windows 11' : 'Windows 10/11';
-      const arm = arch === 'arm';
-      if (nt < 10) { verdict = 'no'; row('no', 'Sistem', label + ' · Windows 10 ya da 11 gerekli'); }
-      else { verdict = 'ok'; row('ok', 'Sistem', label); }
-      if (arm) row('warn', 'İşlemci', 'ARM · x64 sürümü öykünmeyle çalışır');
-      else if (bitness === '32') { verdict = 'no'; row('no', 'İşlemci', '32 bit · 64 bit Windows gerekli'); }
-      else row('ok', 'İşlemci', '64 bit');
-      file = 'Orbital-windows-x64.zip'; btn = 'Windows için indir';
+      etiket = nt < 10 ? 'Windows 8.1 veya daha eski' : parseInt(pver) >= 13 ? 'Windows 11' : 'Windows 10/11';
+      if (nt < 10) { karar = 'hayir'; satir('hayir', 'Sistem', etiket + ' · Windows 10 ya da 11 gerekli'); }
+      else { karar = 'tamam'; satir('tamam', 'Sistem', etiket); }
+      if (arch === 'arm') satir('uyari', 'İşlemci', 'ARM · x64 sürümü öykünmeyle çalışır');
+      else if (bitness === '32') { karar = 'hayir'; satir('hayir', 'İşlemci', '32 bit · 64 bit Windows gerekli'); }
+      else satir('tamam', 'İşlemci', '64 bit');
+      dosya = 'Orbital-windows-x64.zip'; dugme = 'Windows için indir';
     } else if (/Mac OS X|Macintosh/.test(ua)) {
-      os = 'macos';
-      label = 'macOS';
-      if (arch === 'arm') { verdict = 'ok'; row('ok', 'Sistem', 'macOS · Apple Silicon'); }
-      else if (arch === 'x86') { verdict = 'no'; row('no', 'İşlemci', 'Intel · şimdilik yalnızca Apple Silicon (M1+)'); }
-      else { verdict = 'warn'; row('ok', 'Sistem', 'macOS'); row('warn', 'İşlemci', 'Apple Silicon (M1 ve sonrası) gerekli; Intel Mac desteklenmiyor'); }
-      row('info', 'Sürüm', 'macOS 12 Monterey veya sonrası');
-      file = 'Orbital-macos-arm64.dmg'; btn = 'macOS için indir';
+      os = 'macos'; etiket = 'macOS';
+      if (arch === 'arm') { karar = 'tamam'; satir('tamam', 'Sistem', 'macOS · Apple Silicon'); }
+      else if (arch === 'x86') { karar = 'hayir'; satir('hayir', 'İşlemci', 'Intel · şimdilik yalnızca Apple Silicon (M1+)'); }
+      else { karar = 'uyari'; satir('tamam', 'Sistem', 'macOS'); satir('uyari', 'İşlemci', 'Apple Silicon (M1 ve sonrası) gerekli; Intel Mac desteklenmiyor'); }
+      satir('bilgi', 'Sürüm', 'macOS 12 Monterey veya sonrası');
+      dosya = 'Orbital-macos-arm64.dmg'; dugme = 'macOS için indir';
     } else if (/Linux|X11|CrOS/.test(ua)) {
-      os = 'linux';
-      label = /CrOS/.test(ua) ? 'ChromeOS (Linux)' : 'Linux';
-      const armish = arch === 'arm' || /aarch64|armv/.test(ua);
-      if (armish) { verdict = 'no'; row('no', 'İşlemci', 'ARM · şimdilik yalnızca x86_64'); }
-      else { verdict = 'ok'; row('ok', 'Sistem', label + ' · x86_64'); }
-      row('info', 'Dağıtım', '2022 ve sonrası (Ubuntu 22.04+, Debian 12+, Fedora 36+, Arch…)');
-      file = 'Orbital-x86_64.AppImage'; btn = 'Linux için indir';
+      os = 'linux'; etiket = /CrOS/.test(ua) ? 'ChromeOS (Linux)' : 'Linux';
+      if (arch === 'arm' || /aarch64|armv/.test(ua)) { karar = 'hayir'; satir('hayir', 'İşlemci', 'ARM · şimdilik yalnızca x86_64'); }
+      else { karar = 'tamam'; satir('tamam', 'Sistem', etiket + ' · x86_64'); }
+      satir('bilgi', 'Dağıtım', '2022 ve sonrası (Ubuntu 22.04+, Debian 12+, Fedora 36+, Arch…)');
+      dosya = 'Orbital-x86_64.AppImage'; dugme = 'Linux için indir';
     } else {
-      row('warn', 'Sistem', 'algılanamadı · aşağıdan sistemini seç');
+      satir('uyari', 'Sistem', 'algılanamadı · aşağıdan sistemini seç');
     }
+    if (navigator.onLine === false) { satir('hayir', 'İnternet', 'bağlantı yok · modeller bulutta çalışır'); if (karar === 'tamam') karar = 'uyari'; }
+    else satir('tamam', 'İnternet', 'bağlı · modeller bulutta çalışır');
+    if (navigator.deviceMemory) satir(navigator.deviceMemory >= 4 ? 'tamam' : 'uyari', 'Bellek', (navigator.deviceMemory >= 8 ? '8 GB veya daha fazla' : 'yaklaşık ' + navigator.deviceMemory + ' GB') + (navigator.deviceMemory < 4 ? ' · 4 GB önerilir' : ''));
+    else satir('bilgi', 'Bellek', '4 GB önerilir');
+    satir('bilgi', 'Disk', 'yaklaşık 500 MB boş alan');
+    satir('bilgi', 'Node.js / uv', 'yalnızca bazı eklentiler için (ör. Web Tarayıcı)');
 
-    if (navigator.onLine === false) { row('no', 'İnternet', 'bağlantı yok · modeller bulutta çalışır'); if (verdict === 'ok') verdict = 'warn'; }
-    else row('ok', 'İnternet', 'bağlı · modeller bulutta çalışır');
-    if (navigator.deviceMemory) row(navigator.deviceMemory >= 4 ? 'ok' : 'warn', 'Bellek', (navigator.deviceMemory >= 8 ? '8 GB veya daha fazla' : 'yaklaşık ' + navigator.deviceMemory + ' GB') + (navigator.deviceMemory < 4 ? ' · 4 GB önerilir' : ''));
-    else row('info', 'Bellek', '4 GB önerilir');
-    row('info', 'Disk', 'yaklaşık 500 MB boş alan');
-    row('info', 'Node.js / uv', 'yalnızca bazı eklentiler için (ör. Web Tarayıcı)');
-
-    const icon = { ok: '✓', warn: '!', no: '✕', info: '•' };
-    const esc = t => t.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
-    document.getElementById('checklist').innerHTML = rows.map(([st, k, v]) =>
-      `<li><span class="st ${st}">${icon[st]}</span><span class="k">${esc(k)}</span><span class="v">${esc(v)}</span></li>`).join('');
-
-    const card = document.getElementById('verdict');
-    card.classList.add(verdict);
-    card.querySelector('.symbol').textContent = icon[verdict];
-    card.querySelector('h3').textContent = { ok: 'Bilgisayarın hazır.', warn: 'Neredeyse hazır.', no: 'Bu cihaz şimdilik desteklenmiyor.' }[verdict];
-    card.querySelector('p').textContent = {
-      ok: 'Orbital bu bilgisayarda çalışır. İndir, aç ve ilk sorunu sor.',
-      warn: 'Büyük ihtimalle çalışır; sağdaki ünlem işaretli maddelere bir göz at.',
-      no: 'Sağdaki çarpı işaretli maddeye bak. Desteklenen sistemler: Windows 10/11, Apple Silicon Mac, Linux x86_64.'
-    }[verdict];
-    card.querySelector('.detected').textContent = 'Algılanan: ' + label;
-    if (file && verdict !== 'no') {
-      const a = card.querySelector('.button');
-      a.href = DL + file; a.hidden = false; a.querySelector('span').textContent = btn;
+    const SIMGE = { tamam: '✓', uyari: '!', hayir: '✕', bilgi: '•' };
+    const RENK = { tamam: 'text-emerald-600', uyari: 'text-amber-500', hayir: 'text-red-600', bilgi: 'text-slate-400' };
+    const TON = { tamam: 'bg-emerald-50 text-emerald-600 ring-emerald-100', uyari: 'bg-amber-50 text-amber-600 ring-amber-100', hayir: 'bg-red-50 text-red-600 ring-red-100' };
+    const kac = (t) => t.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+    document.getElementById('kontrolListesi').innerHTML = satirlar.map(([d, k, v]) =>
+      `<li class="flex items-start gap-3 px-5 py-3.5 text-sm"><span class="w-4 shrink-0 text-center font-bold ${RENK[d]}">${SIMGE[d]}</span><span class="w-28 shrink-0 font-medium text-slate-900">${kac(k)}</span><span class="min-w-0">${kac(v)}</span></li>`).join('');
+    const simge = document.getElementById('kararSimge');
+    simge.className = 'ton h-11 w-11 text-lg font-bold ' + TON[karar];
+    simge.textContent = SIMGE[karar];
+    document.getElementById('kararBaslik').textContent = { tamam: 'Bilgisayarın hazır.', uyari: 'Neredeyse hazır.', hayir: 'Bu cihaz şimdilik desteklenmiyor.' }[karar];
+    document.getElementById('kararMetin').textContent = {
+      tamam: 'Orbital bu bilgisayarda çalışır. İndir, aç ve ilk sorunu sor.',
+      uyari: 'Büyük ihtimalle çalışır; ünlem işaretli maddelere bir göz at.',
+      hayir: 'Çarpı işaretli maddeye bak. Desteklenen sistemler: Windows 10/11, Apple Silicon Mac, Linux x86_64.'
+    }[karar];
+    document.getElementById('kararAlgilanan').textContent = 'Algılanan: ' + etiket;
+    if (dosya && karar !== 'hayir') {
+      const a = document.getElementById('kararIndir');
+      a.href = DL + dosya; a.hidden = false; a.querySelector('span').textContent = dugme;
     }
-    if (os) document.querySelector(`.downloads .card[data-os="${os}"]`)?.classList.add('match');
+    if (os) document.querySelector(`.indir-kart[data-os="${os}"]`)?.classList.add('senin');
   })();
-
-  document.querySelectorAll('.filters button').forEach(b => b.addEventListener('click', () => {
-    document.querySelectorAll('.filters button').forEach(x => x.classList.toggle('on', x === b));
-    const f = b.dataset.filter;
-    document.querySelectorAll('.store-card').forEach(c => { c.hidden = f !== 'all' && c.dataset.type !== f; });
-  }));
 </script>
 </body>
 </html>
