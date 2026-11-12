@@ -1,6 +1,6 @@
 class Orbital < Formula
   desc "Skill ve eklenti destekli, sade ve güçlü masaüstü AI kod asistanı"
-  homepage "https://kefy266.github.io/orbital"
+  homepage "https://orbital.oedge.xyz"
   url "https://github.com/kefy266/orbital.git", tag: "v0.5.3"
   version "0.5.3"
   license "MIT"

@@ -54,7 +54,7 @@ Installed-Size: $size
 Depends: libc6 (>= 2.35), libgl1, libegl1, libfontconfig1, libfreetype6, libx11-6, libx11-xcb1, libxcb1, libxkbcommon0, libglib2.0-0
 Recommends: xdg-desktop-portal, git
 Maintainer: kefy266 <kefy266@users.noreply.github.com>
-Homepage: https://kefy266.github.io/orbital
+Homepage: https://orbital.oedge.xyz
 Description: Sade ve güçlü masaüstü AI kod asistanı
  Orbital projenin içinde çalışır: dosyaları okur, düzenler, komut çalıştırır.
  Skill'ler ve eklentilerle genişler; ücretsiz bulut modelleriyle hazır gelir.

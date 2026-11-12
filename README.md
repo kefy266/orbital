@@ -1,6 +1,6 @@
 # ◉ Orbital
 
-[![Build](https://github.com/kefy266/orbital/actions/workflows/build.yml/badge.svg)](https://github.com/kefy266/orbital/actions/workflows/build.yml) · **Site:** https://kefy266.github.io/orbital
+[![Build](https://github.com/kefy266/orbital/actions/workflows/build.yml/badge.svg)](https://github.com/kefy266/orbital/actions/workflows/build.yml) · **Site:** https://orbital.oedge.xyz
 
 **Skill ve eklenti destekli, sade bir masaüstü AI kod asistanı.** Qt Quick (QML) ile yazıldı, sistemin açık/koyu temasını izler. Hesap ya da API anahtarı gerektirmeyen ücretsiz ORBITAL modelleriyle çalışır; istersen kendi OpenAI, Anthropic, Gemini… anahtarlarını bağlayabilirsin.
 
