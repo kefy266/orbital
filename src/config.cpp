@@ -1,6 +1,5 @@
 #include "config.h"
 
-#include "edgeaccount.h"
 #include "paths.h"
 
 #include <QFile>
@@ -107,6 +106,11 @@ QList<ProviderConfig> providers()
             continue;
         out << p;
     }
+    // EdgeAccount session (settings.json "edgeAccount", written by EdgeAccount); read here directly so
+    // this file does not depend on the GUI-side EdgeAccount class.
+    const QJsonObject account = Paths::loadSettings().value(QStringLiteral("edgeAccount")).toObject();
+    const QString accountToken = account.value(QStringLiteral("token")).toString();
+    const bool developer = !accountToken.isEmpty() && account.value(QStringLiteral("developer")).toBool();
     // ORBITAL Web (yz.oedge.xyz): the Sohbet mode's models. No API key; the server keeps its own.
     if (!all.contains(QStringLiteral("orbital-web"))) {
         ProviderConfig p;
@@ -115,17 +119,17 @@ QList<ProviderConfig> providers()
         p.type = QStringLiteral("openai");
         p.baseUrl = qEnvironmentVariable("ORBITAL_WEB_URL", QStringLiteral("https://yz.oedge.xyz")) + QStringLiteral("/v1");
         // Signed in: the server opens Pro/Ultra by the account's Origin Edge package (Edge+, Edge Pro, developer).
-        p.apiKey = EdgeAccount::token();
+        p.apiKey = accountToken;
         out.prepend(p);
     }
     // ORBITAL Code: ORBITAL Cloud models (orbital.oedge.xyz) in Kod, for developer accounts, no daily quota.
-    if (EdgeAccount::developer() && !all.contains(QStringLiteral("orbital"))) {
+    if (developer && !all.contains(QStringLiteral("orbital"))) {
         ProviderConfig p;
         p.id = QStringLiteral("orbital");
         p.name = QStringLiteral("ORBITAL Code");
         p.type = QStringLiteral("openai");
-        p.baseUrl = EdgeAccount::cloudUrl() + QStringLiteral("/v1");
-        p.apiKey = EdgeAccount::token();
+        p.baseUrl = qEnvironmentVariable("ORBITAL_CLOUD_URL", QStringLiteral("https://orbital.oedge.xyz")) + QStringLiteral("/v1");
+        p.apiKey = accountToken;
         out.prepend(p);
     }
     return out;
